@@ -1,6 +1,3 @@
-#![recursion_limit = "128"]
-extern crate proc_macro;
-
 use quote::quote;
 
 use proc_macro2::TokenStream;
@@ -10,12 +7,13 @@ use syn::{Data, DeriveInput, Expr, ExprLit, Fields, Lit};
 #[proc_macro_derive(IntegerId)]
 pub fn integer_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
-    impl_integer_id(&ast).into()
+    impl_integer_id(&ast)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 // The compiler doesn't seem to know when variables are used in the macro
-#[allow(unused_variables)]
-fn impl_integer_id(ast: &DeriveInput) -> TokenStream {
+fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
     let name = &ast.ident;
     match ast.data {
         Data::Struct(ref data) => {
@@ -38,7 +36,7 @@ fn impl_integer_id(ast: &DeriveInput) -> TokenStream {
                         Fields::Unnamed(_) => (quote! { #name( value ) }, quote!(0)),
                         Fields::Unit => unreachable!(),
                     };
-                    quote! {
+                    Ok(quote! {
                         impl ::idmap::IntegerId for #name {
                             #[inline(always)]
                             fn from_id(id: u64) -> Self {
@@ -54,57 +52,85 @@ fn impl_integer_id(ast: &DeriveInput) -> TokenStream {
                                 <#field_type as ::idmap::IntegerId>::id32(&self.#field_name)
                             }
                         }
-                    }
+                    })
                 }
-                0 => panic!("`IntegerId` is currently unimplemented for empty structs"),
-                _ => panic!(
-                    "`IntegerId` can only be applied to structs with a single field, but {} has {}",
-                    name,
-                    fields.len()
-                ),
+                0 => Err(syn::Error::new_spanned(
+                    &ast.ident,
+                    "IntegerId does not currently support empty structs",
+                )),
+                _ => Err(syn::Error::new_spanned(
+                    fields.iter().nth(1).unwrap(),
+                    "IntegerId can only be applied to structs with a single field",
+                )),
             }
         }
         Data::Enum(ref data) => {
             let mut idx = 0;
-            let variants: Vec<_> = data.variants.iter().map(|variant| {
+            let mut variant_matches = Vec::new();
+            let mut errors = Vec::new();
+            for variant in &data.variants {
                 let ident = &variant.ident;
                 match variant.fields {
                     Fields::Unit => (),
-                    _ => {
-                        panic!("`IntegerId` can be applied only to unitary enums, {}::{} is either struct or tuple", name, ident)
-                    },
+                    _ => errors.push(syn::Error::new_spanned(
+                        &variant.fields,
+                        "IntegerId can only be applied to C-like enums",
+                    )),
                 }
                 match &variant.discriminant {
-                    Some((_, Expr::Lit(ExprLit { lit: Lit::Int(value), .. }))) => {
-                        idx = value.base10_parse::<u64>().expect("Unable to parse discriminant");
+                    Some((
+                        _,
+                        Expr::Lit(ExprLit {
+                            lit: Lit::Int(value),
+                            ..
+                        }),
+                    )) => match value.base10_parse::<u64>() {
+                        Ok(discriminant) => {
+                            idx = discriminant;
+                        }
+                        Err(x) => errors.push(x),
                     },
-                    Some(_) => panic!("Can't handle discriminant for {}::{}", name, ident),
+                    Some((_, discriminant_expr)) => errors.push(syn::Error::new_spanned(
+                        discriminant_expr,
+                        "Discriminant too complex to understand",
+                    )),
                     None => {}
                 }
-                let tt = quote!(#idx => #name::#ident);
+                variant_matches.push(quote!(#idx => #name::#ident));
                 idx += 1;
-                tt
-            }).collect();
-            quote! {
-                impl ::idmap::IntegerId for #name {
-                    #[inline]
-                    fn from_id(id: u64) -> Self {
-                        match id {
-                            #(#variants,)*
-                            _ => ::idmap::_invalid_id(id)
+            }
+            let mut errors = errors.into_iter();
+            if let Some(mut error) = errors.next() {
+                for other in errors {
+                    error.combine(other);
+                }
+                Err(error)
+            } else {
+                Ok(quote! {
+                    impl ::idmap::IntegerId for #name {
+                        #[inline]
+                        #[track_caller]
+                        fn from_id(id: u64) -> Self {
+                            match id {
+                                #(#variant_matches,)*
+                                _ => ::idmap::_invalid_id(id)
+                            }
+                        }
+                        #[inline]
+                        fn id(&self) -> u64 {
+                            *self as u64
+                        }
+                        #[inline]
+                        fn id32(&self) -> u32 {
+                            *self as u32
                         }
                     }
-                    #[inline(always)]
-                    fn id(&self) -> u64 {
-                        *self as u64
-                    }
-                    #[inline(always)]
-                    fn id32(&self) -> u32 {
-                        *self as u32
-                    }
-                }
+                })
             }
         }
-        Data::Union(_) => panic!("Unions are unsupported!"),
+        Data::Union(ref data) => Err(syn::Error::new_spanned(
+            data.union_token,
+            "Unions are unsupported",
+        )),
     }
 }

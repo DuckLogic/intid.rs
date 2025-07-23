@@ -7,6 +7,6 @@ pre-commit:
   commands:
     rustfmt:
       glob: ".rs"
-      run: cargo fmt --check
+      run: cargo fmt --check --all
     typos:
       run: just -q _typos --force-exclude --format=brief -- {staged_files}

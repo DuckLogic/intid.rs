@@ -1,16 +1,9 @@
-#[macro_use]
-extern crate idmap;
-#[macro_use]
-extern crate idmap_derive;
-#[allow(unused_extern_crates)]
-extern crate serde;
-extern crate serde_test;
-#[macro_use]
-extern crate serde_derive;
-
+use idmap_derive::IntegerId;
+use serde_derive::{Deserialize, Serialize};
+#[cfg(feature = "serde")]
 use serde_test::{assert_tokens, Token};
 
-use idmap::IdMap;
+use idmap::{idmap, IdMap};
 use KnownState::*;
 
 #[test]
@@ -97,7 +90,7 @@ fn test_insertion_order() {
 
 #[test]
 #[should_panic]
-#[cfg_attr(feature = "cargo-clippy", allow(no_effect))] // It's supposed to panic
+#[allow(clippy::no_effect)] // It's supposed to panic
 fn test_index_nonexistent() {
     let map = important_cities();
 
@@ -242,6 +235,7 @@ impl ExampleStructWrapper {
 }
 
 #[test]
+#[cfg(feature = "serde")]
 fn test_serde() {
     macro_rules! state_tokens {
         ($len:expr, $($state:expr => $city:expr),*) => (&[

@@ -13,7 +13,7 @@ use fixedbitset::{FixedBitSet, Ones};
 
 use super::IntegerId;
 
-/// A set, whose implement [IntegerId]
+/// A set, whose members implement [IntegerId].
 ///
 /// This is implemented directly as a bitset,
 /// so it may not be appropriate if you know you'll have large ids
@@ -68,7 +68,7 @@ impl<T: IntegerId> IdSet<T> {
         self.len += 1
     }
     /// Remove the specified value from the set if it is present,
-    /// returning whether or not it was present.
+    /// returning whether it was present.
     #[inline]
     pub fn remove<Q: Borrow<T>>(&mut self, value: Q) -> bool {
         let value = value.borrow();
@@ -88,7 +88,7 @@ impl<T: IntegerId> IdSet<T> {
     }
     /// Iterate over the values in this set
     #[inline]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             len: self.len,
             handle: self.handle.ones(),
@@ -132,13 +132,13 @@ impl<T: IntegerId> IdSet<T> {
     }
 }
 #[inline]
-fn retain_word<F: FnMut(u32) -> bool>(original_word: u32, mut func: F) -> (u32, u32) {
+fn retain_word<F: FnMut(u32) -> bool>(original_word: usize, mut func: F) -> (usize, u32) {
     let mut remaining = original_word;
     let mut result = original_word;
     let mut removed = 0;
     while remaining != 0 {
         let bit = remaining.trailing_zeros();
-        let mask = 1u32 << bit;
+        let mask = 1usize << bit;
         debug_assert_ne!(result & mask, 0);
         if !func(bit) {
             result &= !mask;
@@ -220,7 +220,7 @@ impl<'a, T: IntegerId + 'a> Index<&'a T> for IdSet<T> {
         &self.handle[index.id() as usize]
     }
 }
-impl<'a, T: IntegerId + 'a> Index<T> for IdSet<T> {
+impl<T: IntegerId> Index<T> for IdSet<T> {
     type Output = bool;
 
     #[inline]

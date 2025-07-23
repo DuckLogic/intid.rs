@@ -1,39 +1,57 @@
 [package]
 name = "idmap"
-version = "0.2.21"
-authors = ["Techcable <git@techcable.net>"]
+version.workspace = true
 description = "Efficient maps of integer id keys to values, backed by an underlying `Vec`"
-repository = "https://github.com/DuckLogic/idmap.rs"
-edition = "2018"
-
-readme = "README.md"
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
-serde = { version = "^1.0.11", optional = true }
+serde = { version = "1", optional = true }
 # Allows implementing IntegerId for graphid
-petgraph = { version = "^0.6", optional = true }
+petgraph = { version = "0.6", optional = true }
 # Used as the underlying bitset implementation
-fixedbitset = "^0.4"
+fixedbitset = "0.5"
+# optionally re-export derives
+idmap-derive = { version = "0.2.22", path = "idmap-derive", optional = true }
 
 # NOTE: Cannot use workspace.package, because that requires 1.64
 [workspace]
 members = [".", "idmap-derive"]
 default-members = [".", "idmap-derive"]
 
+[workspace.package]
+version = "0.2.22"
+repository = "https://github.com/DuckLogic/idmap.rs"
+authors = ["Techcable <git@techcable.net>"]
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+# 1.56 - 2021 edition
+# 1.61 - Vec::retain_mut
+# 1.64 - workspace.package
+# 1.65 - GAT
+rust-version = "1.64"
+edition = "2021"
+
 [dev-dependencies]
 # Testing serde
-serde_test = "^1.0.11"
-serde_derive = "^1.0.11"
-itertools = "^0.9"
+serde = "1"
+serde_test = "1"
+serde_derive = "1"
+itertools = "0.14"
 
 [dev-dependencies.idmap-derive]
 path = "idmap-derive"
-version = "0.2"
+version = "0.2.22"
 
 [features]
 default = []
 nightly = []
+# export derive macros
+derive = ["dep:idmap-derive"]
 
 [package.metadata.docs.rs]
 features = ["serde", "petgraph"]

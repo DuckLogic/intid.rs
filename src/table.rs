@@ -1,6 +1,6 @@
 //! The internal table types that can be used to power an `IdMap`.
 //!
-//! The underlying tables for an [IdMap]
+//! The underlying tables for an [IdMap](super::IdMap).
 //!
 //! User code shouldn't directly interact with these types,
 //! unless they're actually using an `IdMap`.
@@ -19,6 +19,10 @@ use super::IntegerId;
 ///
 /// `DenseEntryTable`s need a separate `IdTable` since entries will be stored densely,
 /// though a `DirectEntryTable` doesn't need one at all.
+#[deprecated(
+    note = "Should be an implementation detail, not a public API",
+    since = "0.22.1"
+)]
 pub trait IdTable: Debug + Clone {
     /// Create a new table
     fn new() -> Self;
@@ -62,6 +66,10 @@ pub trait IdTable: Debug + Clone {
 /// ## Safety
 /// The return pointers must be correctly associated with the table
 /// for the safe wrappers to yield the correct lifetimes
+#[deprecated(
+    note = "With the advent of GAT, this API is needlessly unsafe",
+    since = "0.2.22"
+)]
 pub unsafe trait EntryIterable<K, V> {
     /// The type that iterates over this table's pointers
     type Iter: Iterator<Item = (TableIndex, *const (K, V))> + Clone;
@@ -255,8 +263,11 @@ impl OrderedIdTable {
         if index >= len {
             self.table.reserve(index - len + 1);
         }
+        assert!(self.table.capacity() >= self.table.len());
         let additional_elements = self.table.capacity() - len;
-        crate::utils::fill_bytes(&mut self.table, additional_elements, !0);
+        for _ in 0..additional_elements {
+            self.table.push(TableIndex::INVALID);
+        }
         &mut self.table[index]
     }
 }
@@ -305,7 +316,6 @@ impl IdTable for OrderedIdTable {
 /// The marker index `TableIndex::INVALID` is used to indicate missing entries.
 #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord)]
 pub struct TableIndex(u32);
-unsafe impl crate::utils::ArbitraryBytes for TableIndex {}
 impl TableIndex {
     /// The special marker index for a missing/invalid entry,
     /// which may be used by a table to indicate that an entry is missing.
@@ -313,13 +323,13 @@ impl TableIndex {
     /// This is used instead of an `Option` for performance reasons,
     /// as it can often be internally folded into a bounds check
     /// which would otherwise need a separate check.
-    pub const INVALID: TableIndex = TableIndex(u32::max_value());
+    pub const INVALID: TableIndex = TableIndex(u32::MAX);
     /// Create a table index corresponding to the specified key
     #[inline]
     pub fn from_key<T: IntegerId>(key: &T) -> Self {
         let id = key.id();
-        // Remember, u32::max_value() is the marker
-        if id < u64::from(u32::max_value()) {
+        // Remember, u32::MAX is the marker
+        if id < u64::from(u32::MAX) {
             TableIndex(id as u32)
         } else {
             id_overflow(key)
@@ -328,11 +338,7 @@ impl TableIndex {
     /// Create a table index from the specified value
     #[inline]
     pub fn from_index(index: usize) -> Self {
-        assert!(
-            index < (u32::max_value() as usize),
-            "Invalid index: {}",
-            index
-        );
+        assert!(index < (u32::MAX as usize), "Invalid index: {index}");
         TableIndex(index as u32)
     }
     /// Give the underlying value of this index, or `None` if it's invalid.
@@ -357,7 +363,7 @@ impl TableIndex {
     /// panicking on overflow
     #[inline]
     pub fn offset(self, amount: u32) -> Self {
-        if self.0 < (u32::max_value() - amount) {
+        if self.0 < (u32::MAX - amount) {
             let result = TableIndex(self.0 + amount);
             debug_assert!(result.is_valid());
             result
@@ -368,7 +374,7 @@ impl TableIndex {
     #[cold]
     #[inline(never)]
     fn offset_failed(self, amount: u32) -> ! {
-        panic!("Unable to offset {:?} by {}", self, amount)
+        panic!("Unable to offset {self:?} by {amount}")
     }
 
     /// Give the internal value of this index, even if it's invalid.
@@ -379,14 +385,14 @@ impl TableIndex {
     /// Check if the index is valid and not equal to `TableIndex::INVALID`
     #[inline]
     pub fn is_valid(self) -> bool {
-        self.0 != u32::max_value()
+        self.0 != u32::MAX
     }
 }
 impl Debug for TableIndex {
     #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         if let Some(index) = self.index() {
-            write!(f, "TableIndex({})", index)
+            write!(f, "TableIndex({index})")
         } else {
             write!(f, "TableIndex::INVALID")
         }
@@ -396,17 +402,12 @@ impl Debug for TableIndex {
 #[inline(never)]
 #[cold]
 fn id_overflow<T: IntegerId>(key: &T) -> ! {
-    panic!(
-        "ID overflowed, {} >= {} for {:?}",
-        key.id(),
-        u32::max_value(),
-        key
-    )
+    panic!("ID overflowed, {} >= {} for {:?}", key.id(), u32::MAX, key)
 }
 
 /// Iterate over all the valid ids in a table
 pub struct IterValidIds<'a>(slice::Iter<'a, TableIndex>);
-impl<'a> Iterator for IterValidIds<'a> {
+impl Iterator for IterValidIds<'_> {
     type Item = TableIndex;
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -414,12 +415,7 @@ impl<'a> Iterator for IterValidIds<'a> {
     }
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        for &index in &mut self.0 {
-            if index.is_valid() {
-                return Some(index);
-            }
-        }
-        None
+        self.0.find(|&&index| index.is_valid()).copied()
     }
 }
 
@@ -488,7 +484,7 @@ pub struct DenseEntryTable<K: IntegerId, V, T: IdTable = OrderedIdTable> {
 impl<K: IntegerId, V, T: IdTable> DenseEntryTable<K, V, T> {
     fn correct_entries(&mut self) {
         self.table.clear();
-        for (entry_index, &(ref key, _)) in self.entries.iter().enumerate() {
+        for (entry_index, (key, _)) in self.entries.iter().enumerate() {
             *self.table.create_mut(TableIndex::from_key(key)) = TableIndex::from_index(entry_index);
         }
     }
@@ -521,7 +517,7 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
                 // Since invalid indexes are u32::max_value they should always be out of bounds
                 self.entries
                     .get(entry_index.raw_index() as usize)
-                    .map(|&(_, ref value)| value)
+                    .map(|(_, value)| value)
             })
     }
     #[inline]
@@ -587,32 +583,11 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
         F: FnMut(&K, &mut V) -> bool,
     {
         let mut changed = false;
-        #[cfg(feature = "nightly")]
-        {
-            // On nightly, we can use efficient drain_filter
-            self.entries.drain_filter(|&mut (ref key, ref mut value)| {
-                if !func(key, value) {
-                    changed = true;
-                    true
-                } else {
-                    false
-                }
-            });
-        }
-        #[cfg(not(feature = "nightly"))]
-        {
-            // On stable, fallback to requiring allocation
-            let mut retained = Vec::with_capacity(self.entries.len());
-            let old_entries = mem::take(&mut self.entries);
-            for (key, mut value) in old_entries {
-                if !func(&key, &mut value) {
-                    changed = true;
-                } else {
-                    retained.push((key, value));
-                }
-            }
-            self.entries = retained;
-        }
+        self.entries.retain_mut(|(key, value)| {
+            let keep = func(key, &mut *value);
+            changed |= !keep;
+            keep
+        });
         if changed {
             self.correct_entries()
         }
@@ -639,7 +614,7 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
          * Since the entries could be in any order,
          * we have to walk the entire table in order to find the maximum key.
          */
-        self.entries.iter().map(|&(ref key, _)| key.id()).max()
+        self.entries.iter().map(|(key, _)| key.id()).max()
     }
     #[inline]
     fn cloned(&self) -> Self
@@ -788,7 +763,7 @@ impl<K: IntegerId, V> EntryTable<K, V> for DirectEntryTable<K, V> {
         } else {
             Self::grow_entries(&mut self.entries, raw_index)
         };
-        if let Some((_, old)) = mem::replace(target, Some((key, value))) {
+        if let Some((_, old)) = target.replace((key, value)) {
             Some(old)
         } else {
             self.count += 1;

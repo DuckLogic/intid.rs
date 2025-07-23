@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 /// A type that can be uniquely identified by a 64 bit integer id
 pub trait IntegerId: PartialEq + Debug {
-    /// Recreate this key based on its associated integer id  
+    /// Recreate this key based on its associated integer id
     ///
     /// This must be consistent with [IntegerId::id]
     ///
@@ -22,9 +22,10 @@ pub trait IntegerId: PartialEq + Debug {
     fn id32(&self) -> u32;
 }
 macro_rules! nonzero_id {
-    ($target:ident) => {
+    ($($target:ident),*) => {$(
         impl IntegerId for $target {
             #[inline]
+            #[track_caller]
             fn from_id(id: u64) -> Self {
                 let value = IntegerId::from_id(id);
                 $target::new(value).unwrap()
@@ -38,21 +39,21 @@ macro_rules! nonzero_id {
                 self.get().id32()
             }
         }
-    };
+    )*};
 }
-nonzero_id!(NonZeroU8);
-nonzero_id!(NonZeroU16);
-nonzero_id!(NonZeroU32);
-nonzero_id!(NonZeroU64);
-nonzero_id!(NonZeroUsize);
+nonzero_id!(NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize);
 
 macro_rules! primitive_id {
-    ($target:ty, fits32 = false, signed = true) => {
+    ($($target:ident),*) => {$(
         impl IntegerId for $target {
             #[inline]
+            #[track_caller]
             fn from_id(id: u64) -> Self {
                 if cfg!(debug_assertions) && <$target>::try_from(id).is_err() {
-                    debug_assert!(id as $target >= 0, "Negative id: {}", id as $target);
+                    #[allow(unused_comparisons)]
+                    {
+                        assert!(id as $target >= 0, "Negative id: {}", id as $target);
+                    }
                     panic!("Id overflowed a {}: {}", stringify!($target), id);
                 }
                 id as $target
@@ -63,93 +64,41 @@ macro_rules! primitive_id {
             }
             #[inline]
             fn id32(&self) -> u32 {
-                /*
-                 * NOTE: We attempt the lossy conversion to i32 for signed ints, then convert to u32 afterwards.
-                 * If we casted directly from i64 -> u32 it'd fail for negatives,
-                 * and if we casted from i64 -> u64 first, small negatives would fail to cast since they'd be too large.
-                 * For example, -1 would become 0xFFFFFFFF which would overflow a u32,
-                 * but if we first cast to a i32 it'd become 0xFFFF which would fit fine.
-                 */
-                let full_value = *self;
-                if full_value >= (i32::min_value() as $target)
-                    && full_value <= (i32::max_value() as $target)
-                {
-                    (full_value as i32) as u32
-                } else {
-                    id_overflowed(full_value)
-                }
-            }
-        }
-    };
-    ($target:ty, fits32 = false, signed = false) => {
-        impl IntegerId for $target {
-            #[inline]
-            fn from_id(id: u64) -> Self {
-                debug_assert!(
-                    <$target>::try_from(id).is_ok(),
-                    "Id overflows {}: {}",
-                    stringify!($target),
-                    id
-                );
-                id as $target
-            }
-            #[inline(always)]
-            fn id(&self) -> u64 {
-                *self as u64
-            }
-            #[inline]
-            fn id32(&self) -> u32 {
-                let full_value = *self;
-                if full_value >= (u32::min_value() as $target)
-                    && full_value <= (u32::max_value() as $target)
-                {
+                #[allow(unused_comparisons)]
+                const SIGNED: bool = $target::MIN < 0;
+                // Preserve wonky behavior for signed ints, for backwards compatibility reasons.
+                // It never worked very well, requiring inordinate amounts of memory.
+                if SIGNED {
+                    /*
+                     * NOTE: We attempt the lossy conversion to i32 for signed ints, then convert to u32 afterwards.
+                     * If we casted directly from i64 -> u32 it'd fail for negatives,
+                     * and if we casted from i64 -> u64 first, small negatives would fail to cast since they'd be too large.
+                     * For example, -1 would become 0xFFFFFFFF which would overflow a u32,
+                     * but if we first cast to a i32 it'd become 0xFFFF which would fit fine.
+                     */
+                    let full_value = i32::try_from(*self).unwrap_or_else(|_| id_overflowed(*self));
                     full_value as u32
                 } else {
-                    id_overflowed(full_value)
+                    u32::try_from(*self).unwrap_or_else(|_| id_overflowed(*self))
                 }
             }
         }
-    };
-    ($target:ty, fits32 = true) => {
-        impl IntegerId for $target {
-            #[inline]
-            fn from_id(id: u64) -> Self {
-                #[allow(unused_comparisons)] // NOTE: This is redundant for unsigned types
-                {
-                    debug_assert!((id as $target) >= 0, "Negative id: {}", id as $target);
-                }
-                id as $target
-            }
-            #[inline(always)]
-            fn id(&self) -> u64 {
-                *self as u64
-            }
-            #[inline(always)]
-            fn id32(&self) -> u32 {
-                *self as u32
-            }
-        }
-    };
+    )*};
 }
+primitive_id!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 /// Support function that panics if an id overflows a u32
 #[cold]
 #[inline(never)]
-fn id_overflowed(id: impl Display) -> ! {
-    panic!("ID overflowed a u32: {}", id);
+#[track_caller]
+fn id_overflowed<T: Copy + Display>(id: T) -> ! {
+    panic!("ID overflowed a u32: {id}");
 }
-primitive_id!(u64, fits32 = false, signed = false);
-primitive_id!(i64, fits32 = false, signed = true);
-primitive_id!(usize, fits32 = false, signed = false);
-primitive_id!(isize, fits32 = false, signed = true);
-primitive_id!(u32, fits32 = true);
-primitive_id!(i32, fits32 = true);
-primitive_id!(u16, fits32 = true);
-primitive_id!(i16, fits32 = true);
-primitive_id!(u8, fits32 = true);
-primitive_id!(i8, fits32 = true);
+
 macro_rules! generic_deref_id {
     ($target:ident) => {
+        /// **WARNING**: This implementation is deprecated as of v0.2.22,
+        /// and will be removed in v0.3.0.
         impl<T: IntegerId> IntegerId for $target<T> {
             #[inline(always)]
             fn from_id(id: u64) -> Self {

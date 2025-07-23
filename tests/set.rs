@@ -1,18 +1,10 @@
-#[macro_use]
-extern crate idmap;
-#[macro_use]
-extern crate idmap_derive;
-#[allow(unused_extern_crates)]
-extern crate serde;
-extern crate serde_test;
-#[macro_use]
-extern crate serde_derive;
-extern crate itertools;
-
+use idmap_derive::IntegerId;
 use itertools::Itertools;
+use serde_derive::{Deserialize, Serialize};
+#[cfg(feature = "serde")]
 use serde_test::{assert_tokens, Token};
 
-use idmap::IdSet;
+use idmap::{idset, IdSet};
 use KnownState::*;
 
 #[test]
@@ -175,6 +167,7 @@ impl ExampleStructWrapper {
 }
 
 #[test]
+#[cfg(feature = "serde")]
 fn test_serde() {
     macro_rules! state_tokens {
         ($len:expr, $($state:ident),*) => (&[

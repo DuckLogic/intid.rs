@@ -3,13 +3,13 @@
 //! However, unless a `CompactIdMap` is used, space requirements are O(n) the largest key.
 //! Any type that implements `IntegerId` can be used for the key,
 //! but no storage is wasted if the key can be represented from the id.
-#![cfg_attr(feature = "nightly", feature(trusted_len, drain_filter))]
+#![cfg_attr(feature = "nightly", feature(trusted_len))]
 #![deny(missing_docs)]
-extern crate fixedbitset;
-#[cfg(feature = "petgraph")]
-extern crate petgraph;
-#[cfg(feature = "serde")]
-extern crate serde;
+// "must use deprecated APIs to implement deprecated APIs
+#![allow(deprecated)]
+
+#[cfg(feature = "derive")]
+pub use idmap_derive::IntegerId;
 
 use std::borrow::Borrow;
 use std::fmt::{self, Debug, Formatter};
@@ -26,7 +26,6 @@ pub mod ordered;
 mod serialization;
 pub mod set;
 pub mod table;
-mod utils;
 
 pub use integer_id::IntegerId;
 pub use set::IdSet;
@@ -162,7 +161,7 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IdMap<K, V, T> {
     ///
     /// Mimics the HashMap entry aPI
     #[inline]
-    pub fn entry(&mut self, key: K) -> Entry<K, V, T> {
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V, T> {
         if self.entries.get(&key).is_some() {
             Entry::Occupied(OccupiedEntry { map: self, key })
         } else {
@@ -171,28 +170,28 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IdMap<K, V, T> {
     }
     /// Iterate over all the keys and values in this map
     #[inline]
-    pub fn iter(&self) -> Iter<K, V, T> {
+    pub fn iter(&self) -> Iter<'_, K, V, T> {
         Iter(SafeEntries::new(&self.entries))
     }
     /// Iterate over all the entries in this map,
     /// giving mutable references to the keys
     #[inline]
-    pub fn iter_mut(&mut self) -> IterMut<K, V, T> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V, T> {
         IterMut(SafeEntriesMut::new(&mut self.entries))
     }
     /// Iterate over all the keys in the map
     #[inline]
-    pub fn keys(&self) -> Keys<K, V, T> {
+    pub fn keys(&self) -> Keys<'_, K, V, T> {
         Keys(SafeEntries::new(&self.entries))
     }
     /// Iterate over all the values in the map
     #[inline]
-    pub fn values(&self) -> Values<K, V, T> {
+    pub fn values(&self) -> Values<'_, K, V, T> {
         Values(SafeEntries::new(&self.entries))
     }
     /// Iterate over mutable references to all the values in the map
     #[inline]
-    pub fn values_mut(&mut self) -> ValuesMut<K, V, T> {
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V, T> {
         ValuesMut(SafeEntriesMut::new(&mut self.entries))
     }
     /// Clear all the entries the map
@@ -227,7 +226,7 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IdMap<K, V, T> {
     }
     /// Give a wrapper that will debug the underlying representation of this `IdMap`
     #[inline]
-    pub fn raw_debug(&self) -> RawDebug<K, V, T>
+    pub fn raw_debug(&self) -> RawDebug<'_, K, V, T>
     where
         K: Debug,
         V: Debug,
@@ -396,7 +395,7 @@ impl<'a, K: IntegerId, V, T: EntryTable<K, V>> Index<&'a K> for IdMap<K, V, T> {
         if let Some(value) = self.get(key) {
             value
         } else {
-            panic!("Missing entry for {:?}", key)
+            panic!("Missing entry for {key:?}")
         }
     }
 }
@@ -406,7 +405,7 @@ impl<'a, K: IntegerId, V, T: EntryTable<K, V>> IndexMut<&'a K> for IdMap<K, V, T
         if let Some(value) = self.get_mut(key) {
             value
         } else {
-            panic!("Missing entry for {:?}", key)
+            panic!("Missing entry for {key:?}")
         }
     }
 }
@@ -593,14 +592,20 @@ where
     }
 }
 
-// TODO: Enable the macro-generated implementations once intellij understands them
-/*
 macro_rules! delegating_iter {
     ($name:ident, $target:ident, $lifetime:tt, $key:tt, $value:tt, [ $item:ty ], |$handle:ident| $next:expr) => {
+        /// An iterator.
         pub struct $name<$lifetime, $key, $value, I>($target<$lifetime, $key, $value, I>)
-            where $key: IntegerId + $lifetime, $value: $lifetime, I: 'a + EntryIterable<$key, $value>;
+        where
+            $key: IntegerId + $lifetime,
+            $value: $lifetime,
+            I: 'a + EntryIterable<$key, $value>;
         impl<$lifetime, $key, $value, I> Iterator for $name<$lifetime, $key, $value, I>
-            where $key: IntegerId + $lifetime, $value: $lifetime, I: 'a + EntryIterable<$key, $value> {
+        where
+            $key: IntegerId + $lifetime,
+            $value: $lifetime,
+            I: 'a + EntryIterable<$key, $value>,
+        {
             type Item = $item;
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
@@ -613,14 +618,32 @@ macro_rules! delegating_iter {
             }
         }
         impl<$lifetime, $key, $value, I> iter::FusedIterator for $name<$lifetime, $key, $value, I>
-            where $key: IntegerId + $lifetime, $value: $lifetime,
-                  I: 'a + EntryIterable<$key, $value>, I: iter::FusedIterator {}
-        impl<$lifetime, $key, $value, I> iter::ExactSizeIterator for $name<$lifetime, $key, $value, I>
-            where $key: IntegerId + $lifetime, $value: $lifetime,
-                  I: 'a + EntryIterable<$key, $value>, I: iter::ExactSizeIterator {}
-        unsafe impl<$lifetime, $key, $value, I> iter::TrustedLen for $name<$lifetime, $key, $value, I>
-            where $key: IntegerId + $lifetime, $value: $lifetime,
-                  I: 'a + EntryIterable<$key, $value>, I: iter::TrustedLen {}
+        where
+            $key: IntegerId + $lifetime,
+            $value: $lifetime,
+            I: 'a + EntryIterable<$key, $value>,
+            I: iter::FusedIterator,
+        {
+        }
+        impl<$lifetime, $key, $value, I> iter::ExactSizeIterator
+            for $name<$lifetime, $key, $value, I>
+        where
+            $key: IntegerId + $lifetime,
+            $value: $lifetime,
+            I: 'a + EntryIterable<$key, $value>,
+            I: iter::ExactSizeIterator,
+        {
+        }
+        #[cfg(feature = "nightly")]
+        unsafe impl<$lifetime, $key, $value, I> iter::TrustedLen
+            for $name<$lifetime, $key, $value, I>
+        where
+            $key: IntegerId + $lifetime,
+            $value: $lifetime,
+            I: 'a + EntryIterable<$key, $value>,
+            I: iter::TrustedLen,
+        {
+        }
     };
 }
 
@@ -629,320 +652,14 @@ delegating_iter!(IterMut, SafeEntriesMut, 'a, K, V, [ (&'a K, &'a mut V) ], |han
 delegating_iter!(Keys, SafeEntries, 'a, K, V, [ &'a K ], |handle| handle.next().map(|(_, key, _)| key));
 delegating_iter!(Values, SafeEntries, 'a, K, V, [ &'a V ], |handle| handle.next().map(|(_, _, value)| value));
 delegating_iter!(ValuesMut, SafeEntriesMut, 'a, K, V, [ &'a mut V ], |handle| handle.next().map(|(_, _, value)| value));
-*/
 
-/*
- * NOTE: These implementations used to be autogenerated by the `delegating_iter` macro,
- * but I've expanded them ahead of time in order to allow intellij's autocomplete to understand it.
- */
-
-/// An iterator over the entries in a map
-pub struct Iter<'a, K, V, I>(SafeEntries<'a, K, V, I>)
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>;
-impl<'a, K, V, I> Iterator for Iter<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    type Item = (&'a K, &'a V);
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-    #[inline]
-    fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        self.0.next().map(|(_, key, value)| (key, value))
-    }
-}
-impl<'a, K, V, I> iter::FusedIterator for Iter<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::FusedIterator,
-{
-}
-impl<'a, K, V, I> iter::ExactSizeIterator for Iter<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::ExactSizeIterator,
-{
-}
-#[cfg(feature = "nightly")]
-unsafe impl<'a, K, V, I> iter::TrustedLen for Iter<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::TrustedLen,
-{
-}
-impl<'a, K, V, I> Clone for Iter<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    #[inline]
-    fn clone(&self) -> Self {
-        Iter(self.0.clone())
-    }
-}
-impl<'a, K, V, I> Debug for Iter<'a, K, V, I>
-where
-    K: IntegerId + Debug + 'a,
-    V: Debug + 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_tuple("Iter").field(&self.0).finish()
-    }
-}
-
-/// An iterator over the keys in a map
-pub struct Keys<'a, K, V, I>(SafeEntries<'a, K, V, I>)
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>;
-impl<'a, K, V, I> Iterator for Keys<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    type Item = &'a K;
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-    #[inline]
-    fn next(&mut self) -> Option<&'a K> {
-        self.0.next().map(|(_, key, _)| key)
-    }
-}
-impl<'a, K, V, I> iter::FusedIterator for Keys<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::FusedIterator,
-{
-}
-impl<'a, K, V, I> iter::ExactSizeIterator for Keys<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::ExactSizeIterator,
-{
-}
-#[cfg(feature = "nightly")]
-unsafe impl<'a, K, V, I> iter::TrustedLen for Keys<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::TrustedLen,
-{
-}
-impl<'a, K, V, I> Clone for Keys<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    #[inline]
-    fn clone(&self) -> Self {
-        Keys(self.0.clone())
-    }
-}
-impl<'a, K, V, I> Debug for Keys<'a, K, V, I>
-where
-    K: IntegerId + Debug + 'a,
-    V: Debug + 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_tuple("Keys").field(&self.0).finish()
-    }
-}
-
-/// An iterator over the values in a map
-pub struct Values<'a, K, V, I>(SafeEntries<'a, K, V, I>)
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>;
-impl<'a, K, V, I> Iterator for Values<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    type Item = &'a V;
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-    #[inline]
-    fn next(&mut self) -> Option<&'a V> {
-        self.0.next().map(|(_, _, value)| value)
-    }
-}
-impl<'a, K, V, I> iter::FusedIterator for Values<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::FusedIterator,
-{
-}
-impl<'a, K, V, I> iter::ExactSizeIterator for Values<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::ExactSizeIterator,
-{
-}
-#[cfg(feature = "nightly")]
-unsafe impl<'a, K, V, I> iter::TrustedLen for Values<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::TrustedLen,
-{
-}
-impl<'a, K, V, I> Clone for Values<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    #[inline]
-    fn clone(&self) -> Self {
-        Values(self.0.clone())
-    }
-}
-impl<'a, K, V, I> Debug for Values<'a, K, V, I>
-where
-    K: IntegerId + Debug + 'a,
-    V: Debug + 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_tuple("Values").field(&self.0).finish()
-    }
-}
-
-/// An iterator over mutable references to the values in a map
-pub struct ValuesMut<'a, K, V, I>(SafeEntriesMut<'a, K, V, I>)
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>;
-impl<'a, K, V, I> Iterator for ValuesMut<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    type Item = &'a mut V;
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-    #[inline]
-    fn next(&mut self) -> Option<&'a mut V> {
-        self.0.next().map(|(_, _, value)| value)
-    }
-}
-impl<'a, K, V, I> iter::FusedIterator for ValuesMut<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::FusedIterator,
-{
-}
-impl<'a, K, V, I> iter::ExactSizeIterator for ValuesMut<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::ExactSizeIterator,
-{
-}
-#[cfg(feature = "nightly")]
-unsafe impl<'a, K, V, I> iter::TrustedLen for ValuesMut<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::TrustedLen,
-{
-}
-
-/// An iterator over the entries in a map, giving mutable references to the values
-pub struct IterMut<'a, K, V, I>(SafeEntriesMut<'a, K, V, I>)
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>;
-impl<'a, K, V, I> Iterator for IterMut<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-{
-    type Item = (&'a K, &'a mut V);
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-    #[inline]
-    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        self.0.next().map(|(_, key, value)| (key, value))
-    }
-}
-impl<'a, K, V, I> iter::FusedIterator for IterMut<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::FusedIterator,
-{
-}
-impl<'a, K, V, I> iter::ExactSizeIterator for IterMut<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::ExactSizeIterator,
-{
-}
-#[cfg(feature = "nightly")]
-unsafe impl<'a, K, V, I> iter::TrustedLen for IterMut<'a, K, V, I>
-where
-    K: IntegerId + 'a,
-    V: 'a,
-    I: 'a + EntryIterable<K, V>,
-    I: iter::TrustedLen,
-{
-}
-
-/// Support function that panics if an id is invalid
+/// Support function that panics if an id is invalid.
+///
+/// Used for enums.
 #[doc(hidden)]
 #[cold]
 #[inline(never)]
+#[track_caller]
 pub fn _invalid_id(id: u64) -> ! {
-    panic!("ID is invalid: {}", id);
+    panic!("ID is invalid: {id}");
 }

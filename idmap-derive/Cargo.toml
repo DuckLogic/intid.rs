@@ -1,18 +1,18 @@
 [package]
 name = "idmap-derive"
-version = "0.2.0"
-authors = ["Techcable <git@techcable.net>"]
-description = "Automaticatically derives IntegerId for the `idmap` crate"
-repository = "https://github.com/DuckLogic/idmap.rs"
-edition = "2018"
-readme = "../README.md"
-license = "MIT OR Apache-2.0"
-
+version.workspace = true
+description = "Automaticatically derives traits for the idmap crate"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 proc-macro = true
 
 [dependencies]
-syn = "^1"
-quote = "^1"
-proc-macro2 = "^1"
+syn = "2"
+quote = "1"
+proc-macro2 = "1"
