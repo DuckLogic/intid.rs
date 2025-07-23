@@ -1,7 +1,7 @@
 //! Type aliases for [DirectIdMap]
 
-use crate::{IdMap};
 use crate::table::DirectEntryTable;
+use crate::IdMap;
 
 /// An `IdMap` that stores its entries without any indirection,
 /// but takes much more space when entries are missing.
@@ -12,7 +12,6 @@ use crate::table::DirectEntryTable;
 /// Iteration is based on the ids of the `IntegerId` keys,
 /// and is slower than an `OrderedIdMap` since missing entries have to be manually skipped.
 pub type DirectIdMap<K, V> = IdMap<K, V, DirectEntryTable<K, V>>;
-
 
 /// An iterator over the entries of an [DirectIdMap]
 pub type Iter<'a, K, V> = crate::Iter<'a, K, V, DirectEntryTable<K, V>>;

@@ -1,15 +1,15 @@
 //! Implements an `IdSet` using a bitset
 //!
 //! IdSets are to HashSets as IdMaps are to HashMaps
-use std::iter;
-use std::marker::PhantomData;
-use std::ops::{Index};
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::fmt::{self, Debug, Formatter};
 use std::hash::{Hash, Hasher};
-use std::cmp::Ordering;
+use std::iter;
+use std::marker::PhantomData;
+use std::ops::Index;
 
-use fixedbitset::{Ones, FixedBitSet};
+use fixedbitset::{FixedBitSet, Ones};
 
 use super::IntegerId;
 
@@ -22,7 +22,7 @@ use super::IntegerId;
 pub struct IdSet<T: IntegerId> {
     handle: FixedBitSet,
     len: usize,
-    marker: PhantomData<T>
+    marker: PhantomData<T>,
 }
 impl<T: IntegerId> IdSet<T> {
     /// Create a new [IdSet]
@@ -39,7 +39,7 @@ impl<T: IntegerId> IdSet<T> {
         IdSet {
             handle: FixedBitSet::with_capacity(indexes),
             len: 0,
-            marker: PhantomData
+            marker: PhantomData,
         }
     }
     /// Inserts the specified element into the set,
@@ -57,7 +57,8 @@ impl<T: IntegerId> IdSet<T> {
             false
         }
     }
-    #[inline(never)] #[cold]
+    #[inline(never)]
+    #[cold]
     fn insert_fallback(&mut self, id: usize) {
         assert!(id >= self.handle.len());
         let old_len = self.handle.len();
@@ -65,7 +66,6 @@ impl<T: IntegerId> IdSet<T> {
         debug_assert!(!self.handle.contains(id));
         self.handle.insert(id);
         self.len += 1
-
     }
     /// Remove the specified value from the set if it is present,
     /// returning whether or not it was present.
@@ -92,7 +92,7 @@ impl<T: IntegerId> IdSet<T> {
         Iter {
             len: self.len,
             handle: self.handle.ones(),
-            marker: PhantomData
+            marker: PhantomData,
         }
     }
     /// Clear the values in this set
@@ -169,7 +169,7 @@ impl<T: IntegerId> Debug for IdSet<T> {
 }
 impl<'a, T: IntegerId + 'a> iter::Extend<&'a T> for IdSet<T> {
     #[inline]
-    fn extend<I: IntoIterator<Item=&'a T>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         for value in iter.into_iter() {
             self.insert(value);
         }
@@ -177,7 +177,7 @@ impl<'a, T: IntegerId + 'a> iter::Extend<&'a T> for IdSet<T> {
 }
 impl<T: IntegerId> iter::Extend<T> for IdSet<T> {
     #[inline]
-    fn extend<I: IntoIterator<Item=T>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         for value in iter.into_iter() {
             self.insert(value);
         }
@@ -185,7 +185,7 @@ impl<T: IntegerId> iter::Extend<T> for IdSet<T> {
 }
 impl<T: IntegerId> iter::FromIterator<T> for IdSet<T> {
     #[inline]
-    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let iter = iter.into_iter();
         let mut result = IdSet::with_capacity(iter.size_hint().1.unwrap_or(0));
         result.extend(iter);
@@ -195,7 +195,7 @@ impl<T: IntegerId> iter::FromIterator<T> for IdSet<T> {
 
 impl<'a, T: IntegerId + 'a> iter::FromIterator<&'a T> for IdSet<T> {
     #[inline]
-    fn from_iter<I: IntoIterator<Item=&'a T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = &'a T>>(iter: I) -> Self {
         let iter = iter.into_iter();
         let mut result = IdSet::with_capacity(iter.size_hint().1.unwrap_or(0));
         result.extend(iter);
@@ -253,7 +253,7 @@ impl<T: IntegerId + Ord> Ord for IdSet<T> {
 pub struct Iter<'a, T: IntegerId + 'a> {
     len: usize,
     handle: Ones<'a>,
-    marker: PhantomData<&'a T>
+    marker: PhantomData<&'a T>,
 }
 impl<'a, T: IntegerId + 'a> Iterator for Iter<'a, T> {
     type Item = T;
@@ -264,7 +264,7 @@ impl<'a, T: IntegerId + 'a> Iterator for Iter<'a, T> {
             Some(index) => {
                 self.len -= 1;
                 Some(T::from_id(index as u64))
-            },
+            }
             None => {
                 debug_assert_eq!(self.len, 0);
                 None
@@ -276,10 +276,12 @@ impl<'a, T: IntegerId + 'a> Iterator for Iter<'a, T> {
         (self.len, Some(self.len))
     }
     #[inline]
-    fn count(self) -> usize where Self: Sized {
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
         self.len
     }
 }
 impl<'a, T: IntegerId + 'a> iter::ExactSizeIterator for Iter<'a, T> {}
 impl<'a, T: IntegerId + 'a> iter::FusedIterator for Iter<'a, T> {}
-

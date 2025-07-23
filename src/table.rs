@@ -4,10 +4,10 @@
 //!
 //! User code shouldn't directly interact with these types,
 //! unless they're actually using an `IdMap`.
-use std::marker::PhantomData;
-use std::{iter, slice, mem, vec};
 use std::fmt::{self, Debug, Formatter};
+use std::marker::PhantomData;
 use std::ptr::NonNull;
+use std::{iter, mem, slice, vec};
 
 use super::IntegerId;
 
@@ -64,7 +64,7 @@ pub trait IdTable: Debug + Clone {
 /// for the safe wrappers to yield the correct lifetimes
 pub unsafe trait EntryIterable<K, V> {
     /// The type that iterates over this table's pointers
-    type Iter: Iterator<Item=(TableIndex, *const (K, V))> + Clone;
+    type Iter: Iterator<Item = (TableIndex, *const (K, V))> + Clone;
     /// Iterate over raw pointers in this table
     ///
     /// ## Safety
@@ -75,55 +75,93 @@ pub unsafe trait EntryIterable<K, V> {
 
 /// Safely iterates over the entries in a table
 pub struct SafeEntries<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     unchecked_handle: I::Iter,
     /// Actually provides the safety of this iterator by bounding its lifetime
-    _marker: PhantomData<&'a I>
+    _marker: PhantomData<&'a I>,
 }
 impl<'a, K, V, I> SafeEntries<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     /// Safely iterate over the entries in the specified table
     #[inline]
     pub fn new(iterable: &'a I) -> Self {
         unsafe {
             SafeEntries {
                 unchecked_handle: iterable.unchecked_entries(),
-                _marker: PhantomData
+                _marker: PhantomData,
             }
         }
     }
 }
 impl<'a, K, V, I> Iterator for SafeEntries<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     type Item = (TableIndex, &'a K, &'a V);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.unchecked_handle.next().map(|(index, entry_ptr)| {
-            unsafe { (index, &(*entry_ptr).0, &(*entry_ptr).1) }
-        })
+        self.unchecked_handle
+            .next()
+            .map(|(index, entry_ptr)| unsafe { (index, &(*entry_ptr).0, &(*entry_ptr).1) })
     }
 }
 impl<'a, K, V, I> iter::FusedIterator for SafeEntries<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::FusedIterator {}
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::FusedIterator,
+{
+}
 impl<'a, K, V, I> iter::ExactSizeIterator for SafeEntries<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::ExactSizeIterator {}
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::ExactSizeIterator,
+{
+}
 #[cfg(feature = "nightly")]
 unsafe impl<'a, K, V, I> iter::TrustedLen for SafeEntries<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::TrustedLen {}
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::TrustedLen,
+{
+}
 
-impl<'a, K, V, I> Clone for SafeEntries<'a, K, V, I> 
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+impl<'a, K, V, I> Clone for SafeEntries<'a, K, V, I>
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     #[inline]
     fn clone(&self) -> Self {
         SafeEntries {
             unchecked_handle: self.unchecked_handle.clone(),
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 }
 impl<'a, K: Debug, V: Debug, I> Debug for SafeEntries<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
@@ -131,42 +169,74 @@ impl<'a, K: Debug, V: Debug, I> Debug for SafeEntries<'a, K, V, I>
 
 /// Safely iterates over the mutable entries in a table
 pub struct SafeEntriesMut<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     unchecked_handle: I::Iter,
     /// Actually provides the safety of this iterator by bounding its lifetime
-    _marker: PhantomData<&'a mut I>
+    _marker: PhantomData<&'a mut I>,
 }
 impl<'a, K, V, I> SafeEntriesMut<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     #[inline]
     /// Safely iterate over the mutable entries in the specified [EntryIterable]
     pub fn new(iterable: &'a mut I) -> Self {
         unsafe {
             SafeEntriesMut {
                 unchecked_handle: iterable.unchecked_entries(),
-                _marker: PhantomData
+                _marker: PhantomData,
             }
         }
     }
 }
 impl<'a, K, V, I> Iterator for SafeEntriesMut<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     type Item = (TableIndex, &'a K, &'a mut V);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.unchecked_handle.next().map(|(index, entry_ptr)| {
-            unsafe { (index, &(*entry_ptr).0, &mut (*(entry_ptr as *mut (K, V))).1) }
-        })
+        self.unchecked_handle
+            .next()
+            .map(|(index, entry_ptr)| unsafe {
+                (index, &(*entry_ptr).0, &mut (*(entry_ptr as *mut (K, V))).1)
+            })
     }
 }
 impl<'a, K, V, I> iter::FusedIterator for SafeEntriesMut<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::FusedIterator {}
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::FusedIterator,
+{
+}
 impl<'a, K, V, I> iter::ExactSizeIterator for SafeEntriesMut<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::ExactSizeIterator {}
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::ExactSizeIterator,
+{
+}
 #[cfg(feature = "nightly")]
 unsafe impl<'a, K, V, I> iter::TrustedLen for SafeEntriesMut<'a, K, V, I>
-    where K: 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::TrustedLen {}
+where
+    K: 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::TrustedLen,
+{
+}
 
 /// An [IdTable] which preserves the ordering of its keys
 #[derive(Debug, Clone)]
@@ -199,9 +269,7 @@ impl IdTable for OrderedIdTable {
     }
     #[inline]
     fn new() -> Self {
-        OrderedIdTable {
-            table: Vec::new(),
-        }
+        OrderedIdTable { table: Vec::new() }
     }
     #[inline]
     fn get(&self, key: TableIndex) -> Option<TableIndex> {
@@ -260,7 +328,11 @@ impl TableIndex {
     /// Create a table index from the specified value
     #[inline]
     pub fn from_index(index: usize) -> Self {
-        assert!(index < (u32::max_value() as usize), "Invalid index: {}", index);
+        assert!(
+            index < (u32::max_value() as usize),
+            "Invalid index: {}",
+            index
+        );
         TableIndex(index as u32)
     }
     /// Give the underlying value of this index, or `None` if it's invalid.
@@ -293,7 +365,8 @@ impl TableIndex {
             self.offset_failed(amount)
         }
     }
-    #[cold] #[inline(never)]
+    #[cold]
+    #[inline(never)]
     fn offset_failed(self, amount: u32) -> ! {
         panic!("Unable to offset {:?} by {}", self, amount)
     }
@@ -323,9 +396,13 @@ impl Debug for TableIndex {
 #[inline(never)]
 #[cold]
 fn id_overflow<T: IntegerId>(key: &T) -> ! {
-    panic!("ID overflowed, {} >= {} for {:?}", key.id(), u32::max_value(), key)
+    panic!(
+        "ID overflowed, {} >= {} for {:?}",
+        key.id(),
+        u32::max_value(),
+        key
+    )
 }
-
 
 /// Iterate over all the valid ids in a table
 pub struct IterValidIds<'a>(slice::Iter<'a, TableIndex>);
@@ -355,7 +432,7 @@ impl<'a> Iterator for IterValidIds<'a> {
 ///   to associate keys with entries, though it can't preserve ordering and wastes more space
 ///   when keys are missing. For these reasons, it's not the default though it can be used as an
 ///   optimization when you know that the key indexes of the entries will be densely packed.
-pub trait EntryTable<K: IntegerId, V>: EntryIterable<K, V> + IntoIterator<Item=(K, V)> {
+pub trait EntryTable<K: IntegerId, V>: EntryIterable<K, V> + IntoIterator<Item = (K, V)> {
     /// Create a new table
     fn new() -> Self;
     /// Create a new table, initialized to the specified capacity
@@ -380,17 +457,25 @@ pub trait EntryTable<K: IntegerId, V>: EntryIterable<K, V> + IntoIterator<Item=(
     /// This potentially disrupts internal ordering
     fn swap_remove(&mut self, key: &K) -> Option<V>;
     /// Retain the specified entries in the map, returning if any indexes changed
-    fn retain<F>(&mut self, func: F) where F: FnMut(&K, &mut V) -> bool;
+    fn retain<F>(&mut self, func: F)
+    where
+        F: FnMut(&K, &mut V) -> bool;
     /// Clear the table
     fn clear(&mut self);
     /// Reserve room for more entries
     fn reserve(&mut self, amount: usize);
     /// Give a value that will debug the table
-    fn raw_debug(&self) -> &dyn Debug where K: Debug, V: Debug;
+    fn raw_debug(&self) -> &dyn Debug
+    where
+        K: Debug,
+        V: Debug;
     /// Get the maximum id of the table
     fn max_id(&self) -> Option<u64>;
     /// Clone the table
-    fn cloned(&self) -> Self where K: Clone, V: Clone;
+    fn cloned(&self) -> Self
+    where
+        K: Clone,
+        V: Clone;
 }
 /// A table which densely stores its entries
 ///
@@ -398,7 +483,7 @@ pub trait EntryTable<K: IntegerId, V>: EntryIterable<K, V> + IntoIterator<Item=(
 #[derive(Debug, Clone)]
 pub struct DenseEntryTable<K: IntegerId, V, T: IdTable = OrderedIdTable> {
     entries: Vec<(K, V)>,
-    table: T
+    table: T,
 }
 impl<K: IntegerId, V, T: IdTable> DenseEntryTable<K, V, T> {
     fn correct_entries(&mut self) {
@@ -413,7 +498,7 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
     fn new() -> Self {
         DenseEntryTable {
             entries: Vec::new(),
-            table: T::new()
+            table: T::new(),
         }
     }
 
@@ -421,7 +506,7 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
     fn with_capacity(capacity: usize) -> Self {
         DenseEntryTable {
             entries: Vec::with_capacity(capacity),
-            table: T::new()
+            table: T::new(),
         }
     }
     #[inline]
@@ -430,17 +515,21 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
     }
     #[inline]
     fn get(&self, key: &K) -> Option<&V> {
-        self.table.get(TableIndex::from_key(key)).and_then(|entry_index| {
-            // Since invalid indexes are u32::max_value they should always be out of bounds
-            self.entries.get(entry_index.raw_index() as usize)
-                .map(|&(_, ref value)| value)
-        })
+        self.table
+            .get(TableIndex::from_key(key))
+            .and_then(|entry_index| {
+                // Since invalid indexes are u32::max_value they should always be out of bounds
+                self.entries
+                    .get(entry_index.raw_index() as usize)
+                    .map(|&(_, ref value)| value)
+            })
     }
     #[inline]
     fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         if let Some(entry_index) = self.table.get(TableIndex::from_key(key)) {
             // Since invalid indexes are u32::max_value they should always be out of bounds
-            self.entries.get_mut(entry_index.raw_index() as usize)
+            self.entries
+                .get_mut(entry_index.raw_index() as usize)
                 .map(|&mut (_, ref mut value)| value)
         } else {
             None
@@ -453,7 +542,7 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
         if let Some(entry_index) = self.table.get(key_index) {
             let entry_index = entry_index.raw_index() as usize;
             if entry_index < self.entries.len() {
-                return Some(mem::replace(&mut self.entries[entry_index], (key, value)).1)
+                return Some(mem::replace(&mut self.entries[entry_index], (key, value)).1);
             }
         }
         self.insert_vacant(key, value);
@@ -481,18 +570,22 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
                 let last_entry_index = self.entries.len() - 1;
                 // We only need to actually swap the entries if it's not the last element
                 if original_raw_entry_index != last_entry_index {
-                    self.entries.swap(original_raw_entry_index, last_entry_index);
+                    self.entries
+                        .swap(original_raw_entry_index, last_entry_index);
                     self.table.set_raw(last_key_index, original_entry_index);
                 }
                 let (_, value) = self.entries.pop().unwrap();
                 self.table.set_raw(key_index, TableIndex::INVALID);
-                return Some(value)
+                return Some(value);
             }
         }
         None
     }
     #[inline]
-    fn retain<F>(&mut self, mut func: F) where F: FnMut(&K, &mut V) -> bool {
+    fn retain<F>(&mut self, mut func: F)
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
         let mut changed = false;
         #[cfg(feature = "nightly")]
         {
@@ -534,7 +627,11 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
         self.entries.reserve(amount);
     }
     #[inline]
-    fn raw_debug(&self) -> &dyn Debug where K: Debug, V: Debug {
+    fn raw_debug(&self) -> &dyn Debug
+    where
+        K: Debug,
+        V: Debug,
+    {
         self as &dyn Debug
     }
     fn max_id(&self) -> Option<u64> {
@@ -545,7 +642,11 @@ impl<K: IntegerId, V, T: IdTable> EntryTable<K, V> for DenseEntryTable<K, V, T> 
         self.entries.iter().map(|&(ref key, _)| key.id()).max()
     }
     #[inline]
-    fn cloned(&self) -> Self where K: Clone, V: Clone {
+    fn cloned(&self) -> Self
+    where
+        K: Clone,
+        V: Clone,
+    {
         self.clone()
     }
 }
@@ -558,7 +659,7 @@ unsafe impl<K: IntegerId, V, T: IdTable> EntryIterable<K, V> for DenseEntryTable
         UncheckedDenseEntryIter {
             index: TableIndex(0),
             ptr: NonNull::new_unchecked(self.entries.as_ptr() as *mut _),
-            end: NonNull::new_unchecked(self.entries.as_ptr().add(self.entries.len()) as *mut _)
+            end: NonNull::new_unchecked(self.entries.as_ptr().add(self.entries.len()) as *mut _),
         }
     }
 }
@@ -575,14 +676,15 @@ impl<K: IntegerId, V, T: IdTable> IntoIterator for DenseEntryTable<K, V, T> {
 pub struct UncheckedDenseEntryIter<K: IntegerId, V> {
     index: TableIndex,
     ptr: NonNull<(K, V)>,
-    end: NonNull<(K, V)>
+    end: NonNull<(K, V)>,
 }
 impl<K: IntegerId, V> Iterator for UncheckedDenseEntryIter<K, V> {
     type Item = (TableIndex, *const (K, V));
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = ((self.end.as_ptr() as usize) - (self.ptr.as_ptr() as usize)) / mem::size_of::<(K, V)>();
+        let size = ((self.end.as_ptr() as usize) - (self.ptr.as_ptr() as usize))
+            / mem::size_of::<(K, V)>();
         (size, Some(size))
     }
     #[inline]
@@ -613,7 +715,7 @@ impl<K: IntegerId, V> Clone for UncheckedDenseEntryIter<K, V> {
         UncheckedDenseEntryIter {
             index: self.index,
             ptr: self.ptr,
-            end: self.end
+            end: self.end,
         }
     }
 }
@@ -628,7 +730,8 @@ pub struct DirectEntryTable<K: IntegerId, V> {
     count: usize,
 }
 impl<K: IntegerId, V> DirectEntryTable<K, V> {
-    #[cold] #[inline(never)]
+    #[cold]
+    #[inline(never)]
     fn grow_entries(entries: &mut Vec<Option<(K, V)>>, index: usize) -> &mut Option<(K, V)> {
         assert!(index >= entries.len());
         let additional_elements = index - entries.len() + 1;
@@ -645,7 +748,7 @@ impl<K: IntegerId, V> EntryTable<K, V> for DirectEntryTable<K, V> {
     fn new() -> Self {
         DirectEntryTable {
             entries: Vec::new(),
-            count: 0
+            count: 0,
         }
     }
 
@@ -655,9 +758,7 @@ impl<K: IntegerId, V> EntryTable<K, V> for DirectEntryTable<K, V> {
         for _ in 0..capacity {
             entries.push(None);
         }
-        DirectEntryTable {
-            entries, count: 0
-        }
+        DirectEntryTable { entries, count: 0 }
     }
     #[inline]
     fn len(&self) -> usize {
@@ -668,14 +769,14 @@ impl<K: IntegerId, V> EntryTable<K, V> for DirectEntryTable<K, V> {
     fn get(&self, key: &K) -> Option<&V> {
         match self.entries.get(key.id32() as usize) {
             Some(&Some((_, ref value))) => Some(value),
-            _ => None
+            _ => None,
         }
     }
     #[inline]
     fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         match self.entries.get_mut(key.id32() as usize) {
             Some(&mut Some((_, ref mut value))) => Some(value),
-            _ => None
+            _ => None,
         }
     }
     #[inline]
@@ -723,18 +824,21 @@ impl<K: IntegerId, V> EntryTable<K, V> for DirectEntryTable<K, V> {
         if let Some(existing) = self.entries.get_mut(index) {
             if let Some((_, old)) = existing.take() {
                 self.count -= 1;
-                return Some(old)
+                return Some(old);
             }
         }
         None
     }
     #[inline]
-    fn retain<F>(&mut self, mut func: F) where F: FnMut(&K, &mut V) -> bool {
+    fn retain<F>(&mut self, mut func: F)
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
         let mut removed = 0;
         for entry in &mut self.entries {
             if let Some((ref key, ref mut value)) = *entry {
                 if func(key, value) {
-                    continue
+                    continue;
                 } else {
                     removed += 1;
                 }
@@ -754,7 +858,11 @@ impl<K: IntegerId, V> EntryTable<K, V> for DirectEntryTable<K, V> {
         self.entries.reserve(amount);
     }
     #[inline]
-    fn raw_debug(&self) -> &dyn Debug where K: Debug, V: Debug {
+    fn raw_debug(&self) -> &dyn Debug
+    where
+        K: Debug,
+        V: Debug,
+    {
         self as &dyn Debug
     }
     #[inline]
@@ -765,13 +873,17 @@ impl<K: IntegerId, V> EntryTable<K, V> for DirectEntryTable<K, V> {
          */
         for back in self.entries.iter().rev() {
             if let Some((ref key, _)) = *back {
-                return Some(key.id())
+                return Some(key.id());
             }
         }
         None
     }
     #[inline]
-    fn cloned(&self) -> Self where K: Clone, V: Clone {
+    fn cloned(&self) -> Self
+    where
+        K: Clone,
+        V: Clone,
+    {
         self.clone()
     }
 }
@@ -785,7 +897,7 @@ unsafe impl<K: IntegerId, V> EntryIterable<K, V> for DirectEntryTable<K, V> {
             index: TableIndex(0),
             count: self.count,
             ptr: NonNull::new_unchecked(self.entries.as_ptr() as *mut _),
-            end: NonNull::new_unchecked(self.entries.as_ptr().add(self.entries.len()) as *mut _)
+            end: NonNull::new_unchecked(self.entries.as_ptr().add(self.entries.len()) as *mut _),
         }
     }
 }
@@ -812,8 +924,8 @@ impl<K: IntegerId, V> Iterator for SparseEntryIntoIter<K, V> {
             return match self.0.next() {
                 Some(Some((key, value))) => Some((key, value)),
                 Some(None) => continue 'scanLoop,
-                None => None
-            }
+                None => None,
+            };
         }
     }
 }
@@ -824,8 +936,8 @@ impl<K: IntegerId, V> iter::DoubleEndedIterator for SparseEntryIntoIter<K, V> {
             return match self.0.next_back() {
                 Some(Some((key, value))) => Some((key, value)),
                 Some(None) => continue 'scanLoop,
-                None => None
-            }
+                None => None,
+            };
         }
     }
 }
@@ -845,7 +957,7 @@ pub struct UncheckedSparseEntryIter<K: IntegerId, V> {
     /// although it could result in some weird bugs where an 'exact' iterator is wrong.
     count: usize,
     ptr: NonNull<Option<(K, V)>>,
-    end: NonNull<Option<(K, V)>>
+    end: NonNull<Option<(K, V)>>,
 }
 impl<K: IntegerId, V> Iterator for UncheckedSparseEntryIter<K, V> {
     type Item = (TableIndex, *const (K, V));
@@ -867,7 +979,7 @@ impl<K: IntegerId, V> Iterator for UncheckedSparseEntryIter<K, V> {
                 self.ptr = NonNull::new_unchecked(element.add(1));
                 if let Some(ref inner) = *element {
                     self.count -= 1;
-                    return Some((index, inner))
+                    return Some((index, inner));
                 }
             }
             None
@@ -883,7 +995,7 @@ impl<K: IntegerId, V> Clone for UncheckedSparseEntryIter<K, V> {
             index: self.index,
             count: self.count,
             ptr: self.ptr,
-            end: self.end
+            end: self.end,
         }
     }
 }

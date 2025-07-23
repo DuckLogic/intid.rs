@@ -1,7 +1,7 @@
 //! Type aliases for [OrderedIdMap]
 
-use crate::IdMap;
 use crate::table::DenseEntryTable;
+use crate::IdMap;
 
 /// The default `IdMap` that preserves insertion order
 /// and requires little space when keys have missing entries.
@@ -41,4 +41,3 @@ pub type OccupiedEntry<'a, K, V> = crate::OccupiedEntry<'a, K, V, DenseEntryTabl
 
 /// A vacant entry in an [OrderedIdMap]
 pub type VacantEntry<'a, K, V> = crate::VacantEntry<'a, K, V, DenseEntryTable<K, V>>;
-

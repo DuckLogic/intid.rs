@@ -10,7 +10,7 @@ extern crate serde_derive;
 extern crate itertools;
 
 use itertools::Itertools;
-use serde_test::{Token, assert_tokens};
+use serde_test::{assert_tokens, Token};
 
 use idmap::IdSet;
 use KnownState::*;
@@ -93,7 +93,6 @@ fn test_extend_ref() {
     check_cities(ALL_STATES, &all);
 }
 
-
 #[test]
 fn test_retain() {
     let mut set = important_states();
@@ -118,7 +117,7 @@ enum KnownState {
     California,
     NewMexico,
     NewYork,
-    NorthDakota
+    NorthDakota,
 }
 fn check_missing(states: &[KnownState], target: &IdSet<KnownState>) {
     for state in states {
@@ -166,7 +165,7 @@ fn test_insert_expand() {
 struct ExampleWrapper(u16);
 #[derive(IntegerId, Debug, PartialEq)]
 struct ExampleStructWrapper {
-    value: u16
+    value: u16,
 }
 impl ExampleStructWrapper {
     #[inline]
@@ -189,11 +188,6 @@ fn test_serde() {
         ]);
     }
     // Remember, IdSet serializes in _declaration order_
-    const EXPECTED_TOKENS: &[Token] = state_tokens!(3,
-        Arizona,
-        California,
-        NewYork
-    );
+    const EXPECTED_TOKENS: &[Token] = state_tokens!(3, Arizona, California, NewYork);
     assert_tokens(&important_states(), EXPECTED_TOKENS);
 }
-

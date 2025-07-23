@@ -4,8 +4,8 @@ extern crate proc_macro;
 use quote::quote;
 
 use proc_macro2::TokenStream;
-use syn::{DeriveInput, Data, Lit, Expr, ExprLit, Fields};
 use quote::ToTokens;
+use syn::{Data, DeriveInput, Expr, ExprLit, Fields, Lit};
 
 #[proc_macro_derive(IntegerId)]
 pub fn integer_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -34,9 +34,9 @@ fn impl_integer_id(ast: &DeriveInput) -> TokenStream {
                         Fields::Named(_) => {
                             let field_name = field.ident.to_token_stream();
                             (quote!(#name { #field_name: value }), field_name)
-                        },
+                        }
                         Fields::Unnamed(_) => (quote! { #name( value ) }, quote!(0)),
-                        Fields::Unit => unreachable!()
+                        Fields::Unit => unreachable!(),
                     };
                     quote! {
                         impl ::idmap::IntegerId for #name {
@@ -49,17 +49,21 @@ fn impl_integer_id(ast: &DeriveInput) -> TokenStream {
                             fn id(&self) -> u64 {
                                 <#field_type as ::idmap::IntegerId>::id(&self.#field_name)
                             }
-                            #[inline(always)]                    
+                            #[inline(always)]
                             fn id32(&self) -> u32 {
                                 <#field_type as ::idmap::IntegerId>::id32(&self.#field_name)
                             }
                         }
                     }
-                },
+                }
                 0 => panic!("`IntegerId` is currently unimplemented for empty structs"),
-                _ => panic!("`IntegerId` can only be applied to structs with a single field, but {} has {}", name, fields.len())
+                _ => panic!(
+                    "`IntegerId` can only be applied to structs with a single field, but {} has {}",
+                    name,
+                    fields.len()
+                ),
             }
-        },
+        }
         Data::Enum(ref data) => {
             let mut idx = 0;
             let variants: Vec<_> = data.variants.iter().map(|variant| {
@@ -100,7 +104,7 @@ fn impl_integer_id(ast: &DeriveInput) -> TokenStream {
                     }
                 }
             }
-        },
-        Data::Union(_) => panic!("Unions are unsupported!")
+        }
+        Data::Union(_) => panic!("Unions are unsupported!"),
     }
 }

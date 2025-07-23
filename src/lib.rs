@@ -5,35 +5,33 @@
 //! but no storage is wasted if the key can be represented from the id.
 #![cfg_attr(feature = "nightly", feature(trusted_len, drain_filter))]
 #![deny(missing_docs)]
-#[cfg(feature="serde")]
-extern crate serde;
+extern crate fixedbitset;
 #[cfg(feature = "petgraph")]
 extern crate petgraph;
-extern crate fixedbitset;
+#[cfg(feature = "serde")]
+extern crate serde;
 
-use std::marker::PhantomData;
-use std::iter::{self, FromIterator};
 use std::borrow::Borrow;
-use std::ops::{Index, IndexMut};
 use std::fmt::{self, Debug, Formatter};
+use std::iter::{self, FromIterator};
+use std::marker::PhantomData;
+use std::ops::{Index, IndexMut};
 
-
+pub mod direct;
+#[cfg(feature = "petgraph")]
+mod graph;
+mod integer_id;
+pub mod ordered;
+#[cfg(feature = "serde")]
+mod serialization;
 pub mod set;
 pub mod table;
-pub mod direct;
-pub mod ordered;
-#[cfg(feature="serde")]
-mod serialization;
-#[cfg(feature="petgraph")]
-mod graph;
 mod utils;
-mod integer_id;
 
-pub use set::IdSet;
 pub use integer_id::IntegerId;
+pub use set::IdSet;
 use table::{
-    EntryTable, EntryIterable, DenseEntryTable,
-    SafeEntries, SafeEntriesMut, DirectEntryTable
+    DenseEntryTable, DirectEntryTable, EntryIterable, EntryTable, SafeEntries, SafeEntriesMut,
 };
 
 pub use self::direct::DirectIdMap;
@@ -52,7 +50,7 @@ pub use self::ordered::OrderedIdMap;
 /// are documented in the `OrderedIdMap` and `DirectIdMap` aliases.
 pub struct IdMap<K: IntegerId, V, T: EntryTable<K, V> = DenseEntryTable<K, V>> {
     entries: T,
-    marker: PhantomData<DirectEntryTable<K, V>>
+    marker: PhantomData<DirectEntryTable<K, V>>,
 }
 impl<K: IntegerId, V> IdMap<K, V, DirectEntryTable<K, V>> {
     /// Create a new direct IdMap.
@@ -77,7 +75,7 @@ impl<K: IntegerId, V> IdMap<K, V> {
     pub fn new() -> Self {
         IdMap {
             entries: DenseEntryTable::new(),
-            marker: PhantomData
+            marker: PhantomData,
         }
     }
     /// Create an IdMap with the specified capacity, using an `OrderedIdTable`
@@ -85,7 +83,7 @@ impl<K: IntegerId, V> IdMap<K, V> {
     pub fn with_capacity(capacity: usize) -> Self {
         IdMap {
             entries: DenseEntryTable::with_capacity(capacity),
-            marker: PhantomData
+            marker: PhantomData,
         }
     }
 }
@@ -95,7 +93,7 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IdMap<K, V, T> {
     pub fn new_other() -> Self {
         IdMap {
             entries: T::new(),
-            marker: PhantomData
+            marker: PhantomData,
         }
     }
     /// Create a new `IdMap` with the specified capacity but a custom entry table.
@@ -103,7 +101,7 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IdMap<K, V, T> {
     pub fn with_capacity_other(capacity: usize) -> Self {
         IdMap {
             entries: T::with_capacity(capacity),
-            marker: PhantomData
+            marker: PhantomData,
         }
     }
     /// If this map is empty
@@ -120,7 +118,7 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IdMap<K, V, T> {
     }
     /// The maximum id of all the elements in this map
     #[inline]
-    pub fn max_id(&self) -> Option<u64>  {
+    pub fn max_id(&self) -> Option<u64> {
         self.entries.max_id()
     }
     /// If this map contains the specified key
@@ -166,9 +164,7 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IdMap<K, V, T> {
     #[inline]
     pub fn entry(&mut self, key: K) -> Entry<K, V, T> {
         if self.entries.get(&key).is_some() {
-            Entry::Occupied(OccupiedEntry {
-                map: self, key
-            })
+            Entry::Occupied(OccupiedEntry { map: self, key })
         } else {
             Entry::Vacant(VacantEntry { key, map: self })
         }
@@ -218,7 +214,10 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IdMap<K, V, T> {
     /// );
     /// ```
     #[inline]
-    pub fn retain<F>(&mut self, func: F) where F: FnMut(&K, &mut V) -> bool {
+    pub fn retain<F>(&mut self, func: F)
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
         self.entries.retain(func);
     }
     /// Reserve space for the specified number of additional elements
@@ -228,23 +227,39 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IdMap<K, V, T> {
     }
     /// Give a wrapper that will debug the underlying representation of this `IdMap`
     #[inline]
-    pub fn raw_debug(&self) -> RawDebug<K, V, T> where K: Debug, V: Debug {
+    pub fn raw_debug(&self) -> RawDebug<K, V, T>
+    where
+        K: Debug,
+        V: Debug,
+    {
         RawDebug(self)
     }
 }
-impl<K, V, T> Clone for IdMap<K, V, T> where K: IntegerId + Clone, V: Clone, T: EntryTable<K, V> {
+impl<K, V, T> Clone for IdMap<K, V, T>
+where
+    K: IntegerId + Clone,
+    V: Clone,
+    T: EntryTable<K, V>,
+{
     #[inline]
     fn clone(&self) -> Self {
         IdMap {
             entries: self.entries.cloned(),
-            marker: PhantomData
+            marker: PhantomData,
         }
     }
 }
 /// A wrapper to debug the underlying representation of an `IdMap`
 pub struct RawDebug<'a, K: IntegerId + 'a, V: 'a, T: 'a + EntryTable<K, V>>(&'a IdMap<K, V, T>);
 impl<'a, K, V, T> Debug for RawDebug<'a, K, V, T>
-    where K: IntegerId + Debug, V: Debug, T: EntryTable<K, V>, K: 'a, V: 'a, T: 'a {
+where
+    K: IntegerId + Debug,
+    V: Debug,
+    T: EntryTable<K, V>,
+    K: 'a,
+    V: 'a,
+    T: 'a,
+{
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("IdMap")
             .field("entries", self.0.entries.raw_debug())
@@ -253,19 +268,25 @@ impl<'a, K, V, T> Debug for RawDebug<'a, K, V, T>
 }
 /// Checks if two have the same contents, ignoring the order.
 impl<K, V1, T1, V2, T2> PartialEq<IdMap<K, V2, T2>> for IdMap<K, V1, T1>
-    where K: IntegerId, V1: PartialEq<V2>,
-          T1: EntryTable<K, V1>, T2: EntryTable<K, V2>, {
+where
+    K: IntegerId,
+    V1: PartialEq<V2>,
+    T1: EntryTable<K, V1>,
+    T2: EntryTable<K, V2>,
+{
     fn eq(&self, other: &IdMap<K, V2, T2>) -> bool {
         if self.entries.len() != other.entries.len() {
             return false;
         }
         self.iter().all(|(key, value)| {
-            other.get(key).map_or(false, |other_value| value == other_value)
+            other
+                .get(key)
+                .map_or(false, |other_value| value == other_value)
         })
     }
 }
 /// Creates an `IdMap` from a list of key-value pairs
-/// 
+///
 /// ## Example
 /// ````
 /// #[macro_use] extern crate idmap;
@@ -295,7 +316,7 @@ macro_rules! idmap {
 }
 
 /// Creates an `DirectIdMap` from a list of key-value pairs
-/// 
+///
 /// ## Example
 /// ````
 /// #[macro_use] extern crate idmap;
@@ -403,7 +424,7 @@ pub enum Entry<'a, K: IntegerId + 'a, V: 'a, T: 'a + EntryTable<K, V>> {
     /// An entry whose value is present
     Occupied(OccupiedEntry<'a, K, V, T>),
     /// An entry whose value is missing
-    Vacant(VacantEntry<'a, K, V, T>)
+    Vacant(VacantEntry<'a, K, V, T>),
 }
 impl<'a, K: IntegerId + 'a, V: 'a, T: EntryTable<K, V>> Entry<'a, K, V, T> {
     /// Return a reference to this entry's value,
@@ -415,10 +436,13 @@ impl<'a, K: IntegerId + 'a, V: 'a, T: EntryTable<K, V>> Entry<'a, K, V, T> {
     /// Return a reference to this entry's value,
     /// using the closure to initialize it if its missing
     #[inline]
-    pub fn or_insert_with<F>(self, func: F) -> &'a mut V where F: FnOnce() -> V {
+    pub fn or_insert_with<F>(self, func: F) -> &'a mut V
+    where
+        F: FnOnce() -> V,
+    {
         match self {
             Entry::Occupied(entry) => entry.value(),
-            Entry::Vacant(entry) => entry.or_insert_with(func)
+            Entry::Vacant(entry) => entry.or_insert_with(func),
         }
     }
 }
@@ -475,7 +499,10 @@ impl<'a, K: IntegerId + 'a, V: 'a, T: EntryTable<K, V> + 'a> VacantEntry<'a, K, 
     /// Call the specified closure to compute a value to insert,
     /// then proceed by calling [VacantEntry::insert]
     #[inline]
-    pub fn or_insert_with<F>(self, func: F) -> &'a mut V where F: FnOnce() -> V {
+    pub fn or_insert_with<F>(self, func: F) -> &'a mut V
+    where
+        F: FnOnce() -> V,
+    {
         self.insert(func())
     }
 }
@@ -488,7 +515,9 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> IntoIterator for IdMap<K, V, T> {
     }
 }
 impl<'a, K: IntegerId + 'a, V: 'a, T: 'a> IntoIterator for &'a IdMap<K, V, T>
-    where T: EntryTable<K, V> {
+where
+    T: EntryTable<K, V>,
+{
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V, T>;
     #[inline]
@@ -498,7 +527,12 @@ impl<'a, K: IntegerId + 'a, V: 'a, T: 'a> IntoIterator for &'a IdMap<K, V, T>
 }
 
 impl<'a, K, V, T> IntoIterator for &'a mut IdMap<K, V, T>
-    where T: EntryTable<K, V>, K: IntegerId + 'a, V: 'a, T: 'a {
+where
+    T: EntryTable<K, V>,
+    K: IntegerId + 'a,
+    V: 'a,
+    T: 'a,
+{
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V, T>;
     #[inline]
@@ -507,7 +541,7 @@ impl<'a, K, V, T> IntoIterator for &'a mut IdMap<K, V, T>
     }
 }
 impl<K: IntegerId, V, T: EntryTable<K, V>> Extend<(K, V)> for IdMap<K, V, T> {
-    fn extend<I: IntoIterator<Item=(K, V)>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
         let iter = iter.into_iter();
         if let Some(size) = iter.size_hint().1 {
             self.reserve(size);
@@ -519,26 +553,43 @@ impl<K: IntegerId, V, T: EntryTable<K, V>> Extend<(K, V)> for IdMap<K, V, T> {
 }
 impl<K: IntegerId, V, T: EntryTable<K, V>> FromIterator<(K, V)> for IdMap<K, V, T> {
     #[inline]
-    fn from_iter<I>(iterable: I) -> Self where I: IntoIterator<Item=(K, V)> {
+    fn from_iter<I>(iterable: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+    {
         let mut result = Self::new_other();
         result.extend(iterable);
         result
     }
 }
 impl<'a, K, V, T> FromIterator<(&'a K, &'a V)> for IdMap<K, V, T>
-    where K: IntegerId + Clone + 'a, V: Clone + 'a, T: EntryTable<K, V> {
+where
+    K: IntegerId + Clone + 'a,
+    V: Clone + 'a,
+    T: EntryTable<K, V>,
+{
     #[inline]
-    fn from_iter<I>(iterable: I) -> Self where I: IntoIterator<Item=(&'a K, &'a V)> {
+    fn from_iter<I>(iterable: I) -> Self
+    where
+        I: IntoIterator<Item = (&'a K, &'a V)>,
+    {
         let mut result = Self::new_other();
         result.extend(iterable);
         result
     }
 }
 impl<'a, K, V, T> Extend<(&'a K, &'a V)> for IdMap<K, V, T>
-    where K: IntegerId + Clone + 'a, V: Clone + 'a, T: EntryTable<K, V> {
+where
+    K: IntegerId + Clone + 'a,
+    V: Clone + 'a,
+    T: EntryTable<K, V>,
+{
     #[inline]
-    fn extend<I: IntoIterator<Item=(&'a K, &'a V)>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().map(|(key, value)| (key.clone(), value.clone())))
+    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
+        self.extend(
+            iter.into_iter()
+                .map(|(key, value)| (key.clone(), value.clone())),
+        )
     }
 }
 
@@ -586,10 +637,17 @@ delegating_iter!(ValuesMut, SafeEntriesMut, 'a, K, V, [ &'a mut V ], |handle| ha
  */
 
 /// An iterator over the entries in a map
-pub struct Iter<'a, K, V, I>(SafeEntries<'a, K, V, I>) 
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>;
-impl <'a, K, V, I> Iterator for Iter<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+pub struct Iter<'a, K, V, I>(SafeEntries<'a, K, V, I>)
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>;
+impl<'a, K, V, I> Iterator for Iter<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     type Item = (&'a K, &'a V);
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -600,34 +658,65 @@ impl <'a, K, V, I> Iterator for Iter<'a, K, V, I>
         self.0.next().map(|(_, key, value)| (key, value))
     }
 }
-impl <'a, K, V, I> iter::FusedIterator for Iter<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::FusedIterator {}
-impl <'a, K, V, I> iter::ExactSizeIterator for Iter<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::ExactSizeIterator {}
+impl<'a, K, V, I> iter::FusedIterator for Iter<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::FusedIterator,
+{
+}
+impl<'a, K, V, I> iter::ExactSizeIterator for Iter<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::ExactSizeIterator,
+{
+}
 #[cfg(feature = "nightly")]
-unsafe impl <'a, K, V, I> iter::TrustedLen for Iter<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::TrustedLen {}
+unsafe impl<'a, K, V, I> iter::TrustedLen for Iter<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::TrustedLen,
+{
+}
 impl<'a, K, V, I> Clone for Iter<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     #[inline]
     fn clone(&self) -> Self {
         Iter(self.0.clone())
     }
 }
 impl<'a, K, V, I> Debug for Iter<'a, K, V, I>
-        where K: IntegerId + Debug + 'a, V: Debug + 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: IntegerId + Debug + 'a,
+    V: Debug + 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_tuple("Iter")
-            .field(&self.0)
-            .finish()
+        f.debug_tuple("Iter").field(&self.0).finish()
     }
 }
 
 /// An iterator over the keys in a map
-pub struct Keys<'a, K, V, I>(SafeEntries<'a, K, V, I>) 
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>;
-impl <'a, K, V, I> Iterator for Keys<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+pub struct Keys<'a, K, V, I>(SafeEntries<'a, K, V, I>)
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>;
+impl<'a, K, V, I> Iterator for Keys<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     type Item = &'a K;
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -638,34 +727,65 @@ impl <'a, K, V, I> Iterator for Keys<'a, K, V, I>
         self.0.next().map(|(_, key, _)| key)
     }
 }
-impl <'a, K, V, I> iter::FusedIterator for Keys<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::FusedIterator {}
-impl <'a, K, V, I> iter::ExactSizeIterator for Keys<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::ExactSizeIterator {}
+impl<'a, K, V, I> iter::FusedIterator for Keys<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::FusedIterator,
+{
+}
+impl<'a, K, V, I> iter::ExactSizeIterator for Keys<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::ExactSizeIterator,
+{
+}
 #[cfg(feature = "nightly")]
-unsafe impl <'a, K, V, I> iter::TrustedLen for Keys<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::TrustedLen {}
+unsafe impl<'a, K, V, I> iter::TrustedLen for Keys<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::TrustedLen,
+{
+}
 impl<'a, K, V, I> Clone for Keys<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     #[inline]
     fn clone(&self) -> Self {
         Keys(self.0.clone())
     }
 }
-impl<'a, K, V, I> Debug for Keys<'a, K, V, I> 
-    where K: IntegerId + Debug + 'a, V: Debug + 'a, I: 'a + EntryIterable<K, V>{
+impl<'a, K, V, I> Debug for Keys<'a, K, V, I>
+where
+    K: IntegerId + Debug + 'a,
+    V: Debug + 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_tuple("Keys")
-            .field(&self.0)
-            .finish()
+        f.debug_tuple("Keys").field(&self.0).finish()
     }
 }
 
 /// An iterator over the values in a map
-pub struct Values<'a, K, V, I>(SafeEntries<'a, K, V, I>) 
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>;
-impl <'a, K, V, I> Iterator for Values<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+pub struct Values<'a, K, V, I>(SafeEntries<'a, K, V, I>)
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>;
+impl<'a, K, V, I> Iterator for Values<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     type Item = &'a V;
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -676,34 +796,65 @@ impl <'a, K, V, I> Iterator for Values<'a, K, V, I>
         self.0.next().map(|(_, _, value)| value)
     }
 }
-impl <'a, K, V, I> iter::FusedIterator for Values<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::FusedIterator {}
-impl <'a, K, V, I> iter::ExactSizeIterator for Values<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::ExactSizeIterator {}
+impl<'a, K, V, I> iter::FusedIterator for Values<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::FusedIterator,
+{
+}
+impl<'a, K, V, I> iter::ExactSizeIterator for Values<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::ExactSizeIterator,
+{
+}
 #[cfg(feature = "nightly")]
-unsafe impl <'a, K, V, I> iter::TrustedLen for Values<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::TrustedLen {}
+unsafe impl<'a, K, V, I> iter::TrustedLen for Values<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::TrustedLen,
+{
+}
 impl<'a, K, V, I> Clone for Values<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     #[inline]
     fn clone(&self) -> Self {
         Values(self.0.clone())
     }
 }
 impl<'a, K, V, I> Debug for Values<'a, K, V, I>
-    where K: IntegerId + Debug + 'a, V: Debug + 'a, I: 'a + EntryIterable<K, V> {
+where
+    K: IntegerId + Debug + 'a,
+    V: Debug + 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_tuple("Values")
-            .field(&self.0)
-            .finish()
+        f.debug_tuple("Values").field(&self.0).finish()
     }
 }
 
 /// An iterator over mutable references to the values in a map
-pub struct ValuesMut<'a, K, V, I>(SafeEntriesMut<'a, K, V, I>) 
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>;
-impl <'a, K, V, I> Iterator for ValuesMut<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+pub struct ValuesMut<'a, K, V, I>(SafeEntriesMut<'a, K, V, I>)
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>;
+impl<'a, K, V, I> Iterator for ValuesMut<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     type Item = &'a mut V;
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -714,19 +865,44 @@ impl <'a, K, V, I> Iterator for ValuesMut<'a, K, V, I>
         self.0.next().map(|(_, _, value)| value)
     }
 }
-impl <'a, K, V, I> iter::FusedIterator for ValuesMut<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::FusedIterator {}
-impl <'a, K, V, I> iter::ExactSizeIterator for ValuesMut<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::ExactSizeIterator {}
+impl<'a, K, V, I> iter::FusedIterator for ValuesMut<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::FusedIterator,
+{
+}
+impl<'a, K, V, I> iter::ExactSizeIterator for ValuesMut<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::ExactSizeIterator,
+{
+}
 #[cfg(feature = "nightly")]
-unsafe impl <'a, K, V, I> iter::TrustedLen for ValuesMut<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::TrustedLen {}
+unsafe impl<'a, K, V, I> iter::TrustedLen for ValuesMut<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::TrustedLen,
+{
+}
 
 /// An iterator over the entries in a map, giving mutable references to the values
-pub struct IterMut<'a, K, V, I>(SafeEntriesMut<'a, K, V, I>) 
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>;
-impl <'a, K, V, I> Iterator for IterMut<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V> {
+pub struct IterMut<'a, K, V, I>(SafeEntriesMut<'a, K, V, I>)
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>;
+impl<'a, K, V, I> Iterator for IterMut<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+{
     type Item = (&'a K, &'a mut V);
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -737,18 +913,36 @@ impl <'a, K, V, I> Iterator for IterMut<'a, K, V, I>
         self.0.next().map(|(_, key, value)| (key, value))
     }
 }
-impl <'a, K, V, I> iter::FusedIterator for IterMut<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::FusedIterator {}
-impl <'a, K, V, I> iter::ExactSizeIterator for IterMut<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::ExactSizeIterator {}
+impl<'a, K, V, I> iter::FusedIterator for IterMut<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::FusedIterator,
+{
+}
+impl<'a, K, V, I> iter::ExactSizeIterator for IterMut<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::ExactSizeIterator,
+{
+}
 #[cfg(feature = "nightly")]
-unsafe impl <'a, K, V, I> iter::TrustedLen for IterMut<'a, K, V, I>
-    where K: IntegerId + 'a, V: 'a, I: 'a + EntryIterable<K, V>, I: iter::TrustedLen {}
-
+unsafe impl<'a, K, V, I> iter::TrustedLen for IterMut<'a, K, V, I>
+where
+    K: IntegerId + 'a,
+    V: 'a,
+    I: 'a + EntryIterable<K, V>,
+    I: iter::TrustedLen,
+{
+}
 
 /// Support function that panics if an id is invalid
 #[doc(hidden)]
-#[cold] #[inline(never)]
+#[cold]
+#[inline(never)]
 pub fn _invalid_id(id: u64) -> ! {
     panic!("ID is invalid: {}", id);
 }

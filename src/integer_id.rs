@@ -1,8 +1,8 @@
-use std::rc::Rc;
-use std::sync::Arc;
+use std::convert::TryFrom;
 use std::fmt::{Debug, Display};
 use std::num::*;
-use std::convert::TryFrom;
+use std::rc::Rc;
+use std::sync::Arc;
 
 /// A type that can be uniquely identified by a 64 bit integer id
 pub trait IntegerId: PartialEq + Debug {
@@ -38,7 +38,7 @@ macro_rules! nonzero_id {
                 self.get().id32()
             }
         }
-    }
+    };
 }
 nonzero_id!(NonZeroU8);
 nonzero_id!(NonZeroU16);
@@ -63,15 +63,17 @@ macro_rules! primitive_id {
             }
             #[inline]
             fn id32(&self) -> u32 {
-                /* 
+                /*
                  * NOTE: We attempt the lossy conversion to i32 for signed ints, then convert to u32 afterwords.
                  * If we casted directly from i64 -> u32 it'd fail for negatives,
                  * and if we casted from i64 -> u64 first, small negatives would fail to cast since they'd be too large.
                  * For example, -1 would become 0xFFFFFFFF which would overflow a u32,
-                 * but if we first cast to a i32 it'd become 0xFFFF which would fit fine.                         
+                 * but if we first cast to a i32 it'd become 0xFFFF which would fit fine.
                  */
                 let full_value = *self;
-                if full_value >= (i32::min_value() as $target) && full_value <= (i32::max_value() as $target) {
+                if full_value >= (i32::min_value() as $target)
+                    && full_value <= (i32::max_value() as $target)
+                {
                     (full_value as i32) as u32
                 } else {
                     id_overflowed(full_value)
@@ -98,7 +100,9 @@ macro_rules! primitive_id {
             #[inline]
             fn id32(&self) -> u32 {
                 let full_value = *self;
-                if full_value >= (u32::min_value() as $target) && full_value <= (u32::max_value() as $target) {
+                if full_value >= (u32::min_value() as $target)
+                    && full_value <= (u32::max_value() as $target)
+                {
                     full_value as u32
                 } else {
                     id_overflowed(full_value)
@@ -112,10 +116,7 @@ macro_rules! primitive_id {
             fn from_id(id: u64) -> Self {
                 #[allow(unused_comparisons)] // NOTE: This is redundant for unsigned types
                 {
-                    debug_assert!(
-                        (id as $target) >= 0,
-                        "Negative id: {}", id as $target
-                    );
+                    debug_assert!((id as $target) >= 0, "Negative id: {}", id as $target);
                 }
                 id as $target
             }
@@ -132,7 +133,8 @@ macro_rules! primitive_id {
 }
 
 /// Support function that panics if an id overflows a u32
-#[cold] #[inline(never)]
+#[cold]
+#[inline(never)]
 fn id_overflowed(id: impl Display) -> ! {
     panic!("ID overflowed a u32: {}", id);
 }
@@ -171,7 +173,9 @@ generic_deref_id!(Arc);
 
 #[cfg(feature = "petgraph")]
 impl<T> IntegerId for ::petgraph::graph::NodeIndex<T>
-    where T: ::petgraph::graph::IndexType + IntegerId {
+where
+    T: ::petgraph::graph::IndexType + IntegerId,
+{
     #[inline]
     fn from_id(id: u64) -> Self {
         Self::from(T::from_id(id))

@@ -9,9 +9,8 @@ extern crate serde_test;
 extern crate serde_derive;
 extern crate itertools;
 
-
 use itertools::Itertools;
-use serde_test::{Token, assert_tokens};
+use serde_test::{assert_tokens, Token};
 
 use idmap::DirectIdMap;
 use KnownState::*;
@@ -31,14 +30,21 @@ fn test_remove() {
 #[test]
 fn test_eq() {
     let first = important_cities();
-    let second = important_cities().into_iter().rev().collect::<DirectIdMap<_, _>>();
+    let second = important_cities()
+        .into_iter()
+        .rev()
+        .collect::<DirectIdMap<_, _>>();
 
     assert_eq!(first, second);
 }
 
 #[test]
 fn test_from_iter() {
-    let xs = [(California, "San Diego"), (NewYork, "New York"), (Arizona, "Phoenix")];
+    let xs = [
+        (California, "San Diego"),
+        (NewYork, "New York"),
+        (Arizona, "Phoenix"),
+    ];
 
     let map: DirectIdMap<_, _> = xs.iter().cloned().collect();
 
@@ -67,18 +73,19 @@ fn test_index() {
 #[test]
 fn test_declaration_order() {
     let map = important_cities();
-    let actual_entries = map.iter()
+    let actual_entries = map
+        .iter()
         .map(|(&state, &city)| (state, city))
         .collect::<Vec<_>>();
-    let declared_entries = actual_entries.iter()
-        .cloned()
-        .sorted()
-        .collect_vec();
+    let declared_entries = actual_entries.iter().cloned().sorted().collect_vec();
     assert_eq!(actual_entries, declared_entries);
-    let reversed_map = actual_entries.iter().rev()
+    let reversed_map = actual_entries
+        .iter()
+        .rev()
         .cloned()
         .collect::<DirectIdMap<KnownState, &'static str>>();
-    let reversed_entries = reversed_map.iter()
+    let reversed_entries = reversed_map
+        .iter()
         .map(|(&state, &city)| (state, city))
         .collect::<Vec<_>>();
     assert_eq!(reversed_entries, declared_entries);
@@ -116,7 +123,10 @@ fn test_extend_ref() {
 
     assert_eq!(all.len(), 5);
     // Updates must remain in declaration order
-    assert_eq!(all.iter().nth(1).unwrap(), (&California, &California.city()));
+    assert_eq!(
+        all.iter().nth(1).unwrap(),
+        (&California, &California.city())
+    );
     assert_eq!(all.iter().nth(4).unwrap(), (&NorthDakota, &"Fargo"));
     check_cities(ALL_STATES, &all);
 }
@@ -134,7 +144,6 @@ fn test_retain() {
     check_missing(TINY_STATES, &map);
 }
 
-
 /// List the biggest cities in each state except for `NewMexico` and `NorthDakota`,
 /// intentionally excluding them to provide a better test case.
 fn important_cities() -> DirectIdMap<KnownState, &'static str> {
@@ -151,7 +160,7 @@ enum KnownState {
     California,
     NewMexico,
     NewYork,
-    NorthDakota
+    NorthDakota,
 }
 fn check_missing(states: &[KnownState], target: &DirectIdMap<KnownState, &'static str>) {
     for state in states {
@@ -175,14 +184,19 @@ impl KnownState {
             California => "Los Angeles",
             NewMexico => "Albuquerque",
             NewYork => "New York City",
-            NorthDakota => "Fargo"
+            NorthDakota => "Fargo",
         }
     }
     fn check_missing(self, target: &DirectIdMap<KnownState, &'static str>) {
         assert_eq!(target.get(self), None, "Expected no city for {:?}", self);
     }
     fn check_city(self, target: &DirectIdMap<KnownState, &'static str>) {
-        assert_eq!(target.get(self), Some(&self.city()), "Unexpected city for {:?}", self);
+        assert_eq!(
+            target.get(self),
+            Some(&self.city()),
+            "Unexpected city for {:?}",
+            self
+        );
     }
 }
 
@@ -212,7 +226,7 @@ fn test_struct_wrapper() {
 struct ExampleWrapper(u16);
 #[derive(IntegerId, Debug, PartialEq)]
 struct ExampleStructWrapper {
-    value: u16
+    value: u16,
 }
 impl ExampleStructWrapper {
     #[inline]
@@ -243,4 +257,3 @@ fn test_serde() {
     );
     assert_tokens(&important_cities(), EXPECTED_TOKENS);
 }
-
