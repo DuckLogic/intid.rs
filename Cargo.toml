@@ -3,7 +3,7 @@ name = "idmap"
 version = "0.2.21"
 authors = ["Techcable <Techcable@techcable.net>"]
 description = "Efficient maps of integer id keys to values, backed by an underlying `Vec`"
-repository = "https://github.com/Techcable/rust-idmap"
+repository = "https://github.com/DuckLogic/idmap.rs"
 edition = "2018"
 
 readme = "README.md"

@@ -3,7 +3,7 @@ name = "idmap-derive"
 version = "0.1.2"
 authors = ["Techcable <Techcable@techcable.net>"]
 description = "Automaticatically derives IntegerId for the `idmap` crate"
-repository = "https://github.com/Techcable/rust-idmap"
+repository = "https://github.com/DuckLogic/idmap.rs"
 edition = "2018"
 
 readme = "../README.md"
