@@ -6,7 +6,7 @@ description = "Automaticatically derives IntegerId for the `idmap` crate"
 repository = "https://github.com/DuckLogic/idmap.rs"
 edition = "2018"
 readme = "../README.md"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 
 
 [lib]

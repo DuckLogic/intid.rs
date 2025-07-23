@@ -11,3 +11,8 @@ Efficient maps of integer id keys to values, backed by an underlying `Vec`.
   - Therefore, entries which aren't present take little space, as only a `u32` needs to be stored.
   - This indirection can be avoided with a `DirectIdMap` which doesn't preserve order,
     and saves space when the ids of the map's keys are densely packed and mostly present.
+
+## License
+Licensed under either the [Apache 2.0 License](./LICENSE-APACHE.txt) or [MIT License](./LICENSE-MIT.txt) at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this project by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
