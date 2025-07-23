@@ -10,4 +10,4 @@ Efficient maps of integer id keys to values, backed by an underlying `Vec`.
 - Maintains insertion order of the entries, as there's an indirection like `OrderMap`.
   - Therefore, entries which aren't present take little space, as only a `u32` needs to be stored.
   - This indirection can be avoided with a `DirectIdMap` which doesn't preserve order,
-    and saves space when the ids of the map's keys are densly packed and mostly present.
+    and saves space when the ids of the map's keys are densely packed and mostly present.

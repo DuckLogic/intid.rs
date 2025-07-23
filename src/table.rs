@@ -312,7 +312,7 @@ impl TableIndex {
     ///
     /// This is used instead of an `Option` for performance reasons,
     /// as it can often be internally folded into a bounds check
-    /// which would otherwise need a seperate check.
+    /// which would otherwise need a separate check.
     pub const INVALID: TableIndex = TableIndex(u32::max_value());
     /// Create a table index corresponding to the specified key
     #[inline]

@@ -64,7 +64,7 @@ macro_rules! primitive_id {
             #[inline]
             fn id32(&self) -> u32 {
                 /*
-                 * NOTE: We attempt the lossy conversion to i32 for signed ints, then convert to u32 afterwords.
+                 * NOTE: We attempt the lossy conversion to i32 for signed ints, then convert to u32 afterwards.
                  * If we casted directly from i64 -> u32 it'd fail for negatives,
                  * and if we casted from i64 -> u64 first, small negatives would fail to cast since they'd be too large.
                  * For example, -1 would become 0xFFFFFFFF which would overflow a u32,
