@@ -16,6 +16,11 @@ petgraph = { version = "^0.6", optional = true }
 # Used as the underlying bitset implementation
 fixedbitset = "^0.4"
 
+# NOTE: Cannot use workspace.package, because that requires 1.64
+[workspace]
+members = [".", "idmap-derive"]
+default-members = [".", "idmap-derive"]
+
 [dev-dependencies]
 # Testing serde
 serde_test = "^1.0.11"
