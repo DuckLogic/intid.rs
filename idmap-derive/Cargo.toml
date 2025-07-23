@@ -1,11 +1,10 @@
 [package]
 name = "idmap-derive"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Techcable <git@techcable.net>"]
 description = "Automaticatically derives IntegerId for the `idmap` crate"
 repository = "https://github.com/DuckLogic/idmap.rs"
 edition = "2018"
-
 readme = "../README.md"
 license = "MIT"
 
