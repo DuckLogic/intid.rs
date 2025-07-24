@@ -1,0 +1,35 @@
+[package]
+name = "intid-allocator"
+description = "Types to allocate and free integer ids"
+version.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+
+[dependencies]
+intid.workspace = true
+atomic = {  version = "0.6", optional = true }
+bytemuck = { version = "1", optional = true }
+rustversion = "1"
+
+[features]
+default = ["alloc", "atomic"]
+std = []
+alloc = []
+atomic = [
+    "dep:atomic",
+    # used by atomic for NoUninit bound
+    "intid/bytemuck",
+    # needed for `with_start_const` function for safe transmute.
+    # Raises MSRV to 1.64
+    "bytemuck/must_cast",
+    # helpful and very old MSRV
+    "bytemuck/align_offset",
+    "bytemuck/track_caller",
+]
+
+[lints]
+workspace = true

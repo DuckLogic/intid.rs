@@ -5,6 +5,7 @@ pub trait PrivateUnsignedInt: Sized {
     /// The type name as a short unqualified string.
     const TYPE_NAME: &'static str;
     fn checked_add(self, other: Self) -> Option<Self>;
+    fn checked_sub(self, other: Self) -> Option<Self>;
     fn from_usize_checked(val: usize) -> Option<Self>;
     fn from_usize_wrapping(val: usize) -> Self;
     #[allow(clippy::wrong_self_convention)]
@@ -26,6 +27,10 @@ macro_rules! impl_primint {
             #[inline]
             fn checked_add(self, other: Self) -> Option<Self> {
                 <$target>::checked_add(self, other)
+            }
+            #[inline]
+            fn checked_sub(self, other: Self) -> Option<Self> {
+                <$target>::checked_sub(self, other)
             }
             #[inline]
             fn from_usize_checked(val: usize) -> Option<Self> {

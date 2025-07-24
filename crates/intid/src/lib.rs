@@ -1,7 +1,9 @@
 //! Defines the [`IntegerId`] trait, for types that can be identified by an integer value.
 #![no_std]
 
+use core::cmp::Ordering;
 use core::fmt::Debug;
+use core::hash::{Hash, Hasher};
 
 mod impls;
 pub mod uint;
@@ -51,8 +53,10 @@ pub use uint::UnsignedPrimInt;
 /// In case 2, the `to_int` method can be trusted to produce a valid value `y` that cannot fail
 /// when passed to `T::from_int_unchecked`.
 ///
-/// These restrictions also apply to all implemented sub-traits in this crate,
+/// The requirement for correctness in this case also apply to all sub-traits in this crate,
 /// including [`ContiguousIntegerId`] and [`IntegerIdCounter`].
+/// So an unsafe implementation of `from_int_unchecked` can be similarly trusted to accept
+/// all integer values between [`ContiguousIntegerId::MIN_ID`] and [`ContiguousIntegerId::MAX_ID`].
 ///
 /// This restriction allows avoiding unnecessary checks when ids are stored to/from another data structure.
 /// Despite this requirement, I still consider this trait safe to implement,
@@ -135,17 +139,40 @@ pub trait IntegerIdCounter: IntegerId + ContiguousIntegerId {
     /// Where a counter a should start from.
     ///
     /// This should be the [`Default`] value if one is defined.
-    const START: Self = Self::MIN_ID;
+    const START: Self;
+    /// Where a counter a should start from.
+    ///
+    /// This should just be the value of [`Self::START`] as a [`T::Int`](IntegerId::Int).
+    /// If not, unexpected behavior can occur (but no UB by itself).
+    ///
+    /// This is necessary because trait methods ([`IntegerId::to_int`])
+    /// can not currently be const methods.
+    const START_INT: Self::Int;
 
     /// Increment this value by the specified offset,
     /// returning `None` if the value overflows or is invalid.
     ///
-    /// This should behavave consistently with [`ContiguousIntegerId`]
+    /// This should behave consistently with [`ContiguousIntegerId`]
     /// and [`IntegerId::from_int_checked`].
     /// However, that can not be relied upon for memory safety.
+    ///
+    /// This is implemented as an associated method to avoid namespace pollution.
     #[inline]
-    fn checked_add(self, offset: Self::Int) -> Option<Self> {
-        uint::checked_add(self.to_int(), offset).and_then(Self::from_int_checked)
+    fn checked_add(this: Self, offset: Self::Int) -> Option<Self> {
+        uint::checked_add(this.to_int(), offset).and_then(Self::from_int_checked)
+    }
+
+    /// Increment this value by the specified offset,
+    /// returning `None` if the value overflows or is invalid.
+    ///
+    /// This should behave consistently with [`ContiguousIntegerId`]
+    /// and [`IntegerId::from_int_checked`].
+    /// However, that can not be relied upon for memory safety.
+    ///
+    /// This is implemented as an associated method to avoid namespace pollution.
+    #[inline]
+    fn checked_sub(this: Self, offset: Self::Int) -> Option<Self> {
+        uint::checked_sub(this.to_int(), offset).and_then(Self::from_int_checked)
     }
 }
 
@@ -162,4 +189,34 @@ pub trait BoundedIntegerId: IntegerId {
     /// ## Safety
     /// In general, this value can not be relied upon for correctness.
     const UPPER_BOUND: usize;
+}
+
+/// A wrapper around an [`IntegerId`] which implements [`Eq`], [`Ord`], and [`Hash`]
+/// based on the integer value.
+#[derive(Copy, Clone, Debug)]
+pub struct OrderByInt<T: IntegerId>(pub T);
+impl<T: IntegerId> Ord for OrderByInt<T> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.to_int().cmp(&other.0.to_int())
+    }
+}
+impl<T: IntegerId> PartialOrd for OrderByInt<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl<T: IntegerId> Eq for OrderByInt<T> {}
+impl<T: IntegerId> PartialEq for OrderByInt<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_int() == other.0.to_int()
+    }
+}
+impl<T: IntegerId> Hash for OrderByInt<T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.to_int().hash(state)
+    }
 }

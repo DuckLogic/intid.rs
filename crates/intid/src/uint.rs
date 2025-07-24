@@ -58,8 +58,16 @@ pub trait UnsignedPrimInt:
 
 /// Add the specified value to the integer,
 /// returning `None` if overflow occurs.
+#[inline]
 pub fn checked_add<T: UnsignedPrimInt>(left: T, right: T) -> Option<T> {
     sealed::PrivateUnsignedInt::checked_add(left, right)
+}
+
+/// Subtract the specified value from the integer,
+/// returning `None` if overflow occurs.
+#[inline]
+pub fn checked_sub<T: UnsignedPrimInt>(left: T, right: T) -> Option<T> {
+    sealed::PrivateUnsignedInt::checked_sub(left, right)
 }
 
 /// Convert a primitive integer to a [`usize`],
