@@ -4,7 +4,7 @@
 //! In the `intid` crate this requires explicitly enabling the `derive` feature.
 //! In the `idmap` crate, the derive feature is on by default.
 
-use proc_macro2::Ident;
+use proc_macro2::{Ident, Span};
 use quote::{quote, quote_spanned};
 
 use proc_macro2::TokenStream;
@@ -12,7 +12,7 @@ use syn::spanned::Spanned;
 use syn::{Data, DeriveInput, Expr, ExprLit, Fields, Lit, Member};
 
 /// Implements [`IntegerId`] for a newetype struct or C-like enum.
-#[proc_macro_derive(IntegerId)]
+#[proc_macro_derive(IntegerId, attributes(intid))]
 pub fn integer_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_integer_id(&ast)
@@ -22,7 +22,25 @@ pub fn integer_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 // The compiler doesn't seem to know when variables are used in the macro
 fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
+    let options = ast
+        .attrs
+        .iter()
+        .find(|attr| attr.meta.path().is_ident("intid"))
+        .map(Options::parse_attr)
+        .unwrap_or_else(|| Ok(Options::default()))?;
     let name = &ast.ident;
+    let from_impl = if options.nofrom.is_some() {
+        quote!()
+    } else {
+        quote! {
+            impl From<&'_ #name> for #name {
+                #[inline]
+                fn from(this: &'_ #name) -> #name {
+                    *this
+                }
+            }
+        }
+    };
     match ast.data {
         Data::Struct(ref data) => {
             let fields = &data.fields;
@@ -55,19 +73,40 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     let impl_to_int = quote_spanned! { field_type.span() => #field_type_as_id::to_int(self.#field_name) };
                     let impl_decl =
                         quote_spanned! { name.span() => impl intid::IntegerId for #name };
+                    let contiguous_impl = if let Some(contiguous) = options.contiguous {
+                        quote_spanned! {
+                            contiguous =>
+                            #[automatically_derived]
+                            impl intid::ContiguousIntegerId for #name {
+                                const MIN_ID: Self = #name {
+                                    #field_name: <#field_type as intid::ContiguousIntegerId>::MIN_ID,
+                                };
+                                const MAX_ID: Self = #name {
+                                    #field_name: <#field_type as intid::ContiguousIntegerId>::MIN_ID,
+                                };
+                            }
+                        }
+                    } else {
+                        quote!()
+                    };
+                    let increment_impl = if let Some(increment) = options.increment {
+                        quote_spanned! {
+                            increment =>
+                            #[automatically_derived]
+                            impl intid::IntegerIdIncrement for #name {
+                                const START: Self = #name {
+                                    #field_name: <#field_type as intid::IntegerIdIncrement>::START,
+                                };
+                            }
+                        }
+                    } else {
+                        quote!()
+                    };
                     Ok(quote! {
                         #[automatically_derived]
                         #impl_decl {
                             type Int = #int_type;
-                            const START: Option<Self> = {
-                                // const_if_match stable since 1.46
-                                match #field_type_as_id::START {
-                                    Some(inner_start) => Some(#name {
-                                        #field_name: inner_start,
-                                    }),
-                                    None => None,
-                                }
-                            };
+
                             #[inline]
                             fn from_int(int: #int_type) -> Self {
                                 #impl_from_int
@@ -87,12 +126,9 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                                 #impl_to_int
                             }
                         }
-                        impl From<&'_ #name> for #name {
-                            #[inline]
-                            fn from(this: &'_ #name) -> #name {
-                                *this
-                            }
-                        }
+                        #contiguous_impl
+                        #increment_impl
+                        #from_impl
                     })
                 }
                 0 => Err(syn::Error::new_spanned(
@@ -140,6 +176,19 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                 variant_matches.push(quote!(#idx => #name::#ident));
                 idx += 1;
             }
+            {
+                let Options {
+                    nofrom: _,
+                    increment,
+                    contiguous,
+                } = options;
+                if let Some(inc) = increment {
+                    errors.push(syn::Error::new(inc, "Not currently supported for enums"))
+                }
+                if let Some(inc) = contiguous {
+                    errors.push(syn::Error::new(inc, "Not currently supported for enums"))
+                }
+            }
             let mut errors = errors.into_iter();
             if let Some(mut error) = errors.next() {
                 for other in errors {
@@ -151,9 +200,6 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                 Ok(quote! {
                     impl intid::IntegerId for #name {
                         type Int = usize;
-
-                        // no reasonable start for an enum
-                        const START: Option<Self> = None;
 
                         #[inline]
                         fn from_int_checked(x: usize) -> Option<Self> {
@@ -180,12 +226,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                             self as usize
                         }
                     }
-                    impl From<&'_ #name> for #name {
-                        #[inline]
-                        fn from(this: &'_ #name) -> #name {
-                            *this
-                        }
-                    }
+                    #from_impl
                 })
             }
         }
@@ -193,5 +234,40 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
             data.union_token,
             "Unions are unsupported",
         )),
+    }
+}
+
+#[derive(Default, Debug)]
+struct Options {
+    /// Do not include the automatic from implementation.
+    nofrom: Option<Span>,
+    increment: Option<Span>,
+    contiguous: Option<Span>,
+}
+impl Options {
+    fn parse_attr(attr: &syn::Attribute) -> syn::Result<Self> {
+        let mut res = Options::default();
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("nofrom") {
+                res.nofrom = Some(meta.path.span());
+                Ok(())
+            } else if meta.path.is_ident("increment") {
+                res.increment = Some(meta.path.span());
+                Ok(())
+            } else if meta.path.is_ident("contiguous") {
+                res.contiguous = Some(meta.path.span());
+                Ok(())
+            } else {
+                Err(meta.error("Invalid attribute"))
+            }
+        })?;
+        if let (Some(increment), None) = (res.increment, res.contiguous) {
+            Err(syn::Error::new(
+                increment.span(),
+                "The `increment` option requires the `contiguous` option",
+            ))
+        } else {
+            Ok(res)
+        }
     }
 }

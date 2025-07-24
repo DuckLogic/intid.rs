@@ -29,6 +29,11 @@ maybe_trait_bound!(
     num_traits::PrimInt
 );
 maybe_trait_bound!(MaybePod, cfg(feature = "bytemuck"), bytemuck::Pod);
+maybe_trait_bound!(
+    MaybeContiguous,
+    cfg(feature = "bytemuck"),
+    bytemuck::Contiguous
+);
 
 /// An unsigned primitive integer.
 ///
@@ -47,6 +52,7 @@ pub trait UnsignedPrimInt:
     + sealed::PrivateUnsignedInt
     + MaybeNumTrait
     + MaybePod
+    + MaybeContiguous
 {
 }
 

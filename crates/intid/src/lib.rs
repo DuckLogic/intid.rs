@@ -51,6 +51,9 @@ pub use uint::UnsignedPrimInt;
 /// In case 2, the `to_int` method can be trusted to produce a valid value `y` that cannot fail
 /// when passed to `T::from_int_unchecked`.
 ///
+/// These restrictions also apply to all implemented sub-traits in this crate,
+/// including [`ContiguousIntegerId`] and [`IntegerIdIncrement`].
+///
 /// This restriction allows avoiding unnecessary checks when ids are stored to/from another data structure.
 /// Despite this requirement, I still consider this trait safe to implement,
 /// because safety can only be violated by an unsafe implementation of`from_int_unchecked`.
@@ -63,12 +66,6 @@ pub trait IntegerId: Copy + Eq + Debug + 'static {
     /// Every valid instance of `Self` should correspond to a valid `Self::Int`.
     /// However, the other direction may not always be true.
     type Int: uint::UnsignedPrimInt;
-
-    /// The initial value for this id.
-    ///
-    /// This should be the smallest integer `x` such that [`Self::from_int(x)`](Self::from_int) succeeds,
-    /// or `None` if there is no reasonable default for this type.
-    const START: Option<Self>;
 
     /// Create an id from the underlying integer value,
     /// panicking if the value is invalid.
@@ -107,6 +104,56 @@ pub trait IntegerId: Copy + Eq + Debug + 'static {
     /// This method can never fail,
     /// since valid instances `Self` always correspond to valid instances of `Self::Int`.
     fn to_int(self) -> Self::Int;
+}
+/// Indicates that an ida occupies contiguous range of contiguous values,
+/// between [`Self::MIN_ID`] and [`Self::MAX_ID`] inclusive.
+///
+/// This is similar to [`bytemuck::Contiguous`].
+/// However, since it is safe to implement,
+/// it must not be relied upon for correctness.
+///
+/// ## Safety
+/// This trait is safe to implement, so may not usually be relied upon for memory safety.
+///
+/// However, if [`Self::from_int_unchecked`](IntegerId::from_int_unchecked) makes unsafe assumptions (satisfying the condition set forth in the [`IntegerId`] safety docs),
+/// then this trait must also be implemented correctly.
+/// More specifically, all integers between [`Self::MIN_ID`] and [`Self::MAX_ID`] must be valid
+/// and cannot fail when passed to [`IntegerId::from_int_checked`].
+pub trait ContiguousIntegerId: IntegerId {
+    /// The value of this type with the smallest integer value.
+    const MIN_ID: Self;
+    /// The value of this type with the largest integer value.
+    const MAX_ID: Self;
+}
+/// An [`IntegerId`] for which it makes sense to increment values,
+/// starting from a default [`Self::START`] value.
+///
+/// This is used by the `intid-allocator` crate to provide an atomic counter to allocate new ids.
+/// It also provides more complex allocators that can reuse ids that have been freed.
+///
+/*
+ * TODO: Come up with a better name for this trait.
+ *
+ * This used to be implemented as START: Option<Self> on the main trait.
+ * This may be preferable because it reduces the number of traits involved
+ * and  it allows implicit derive without explicitly requesting #[intid(increment)]
+ */
+pub trait IntegerIdIncrement: IntegerId + ContiguousIntegerId {
+    /// Where a counter a should start from.
+    ///
+    /// This should be the [`Default`] value if one is defined.
+    const START: Self = Self::MIN_ID;
+
+    /// Increment this value by the specified offset,
+    /// returning `None` if the value overflows or is invalid.
+    ///
+    /// By contract, this should behavave consistently with [`ContiguousIntegerId`]
+    /// and [`IntegerId::from_int_checked`].
+    /// However, that can not be relied upon for memory safety.
+    #[inline]
+    fn checked_add(self, offset: Self::Int) -> Option<Self> {
+        uint::checked_add(self.to_int(), offset).and_then(Self::from_int_checked)
+    }
 }
 
 /// An identifier with a restricted range of integer values,
