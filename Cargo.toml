@@ -10,21 +10,20 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-serde = { version = "1", optional = true }
-# Allows implementing IntegerId for graphid
-petgraph = { version = "0.6", optional = true }
-# Used as the underlying bitset implementation
+# Defines the IntegerId trait
+intid.workspace = true
+# Used for DirectIdSet
 fixedbitset = "0.5"
-# optionally re-export derives
-idmap-derive = { version = "0.2.22", path = "idmap-derive", optional = true }
+# optional features
+serde = { version = "1", optional = true }
+petgraph = { version = "0.8", optional = true }
 
-# NOTE: Cannot use workspace.package, because that requires 1.64
 [workspace]
-members = [".", "idmap-derive"]
-default-members = [".", "idmap-derive"]
+members = [".", "crates/*"]
+default-members = [".", "crates/*"]
 
 [workspace.package]
-version = "0.2.22"
+version = "0.3.0-alpha.1"
 repository = "https://github.com/DuckLogic/idmap.rs"
 authors = ["Techcable <git@techcable.net>"]
 readme = "README.md"
@@ -33,8 +32,28 @@ license = "MIT OR Apache-2.0"
 # 1.61 - Vec::retain_mut
 # 1.64 - workspace.package
 # 1.65 - GAT
-rust-version = "1.64"
+# 1.68 - sparse index
+rust-version = "1.65"
 edition = "2021"
+
+[lints]
+workspace = true
+
+[workspace.dependencies]
+intid-derive = { path  = "crates/intid-derive", version = "0.3.0-alpha.1" }
+intid = { path  = "crates/intid", version = "0.3.0-alpha.1" }
+
+[workspace.lints.rust]
+missing-docs = "deny"
+
+[workspace.lints.clippy]
+alloc_instead_of_core = "deny"
+std_instead_of_alloc = "deny"
+std_instead_of_core = "deny"
+
+# safety
+undocumented_unsafe_blocks = "deny"
+multiple_unsafe_ops_per_block = "deny"
 
 [dev-dependencies]
 # Testing serde
@@ -42,17 +61,15 @@ serde = "1"
 serde_test = "1"
 serde_derive = "1"
 itertools = "0.14"
-
-[dev-dependencies.idmap-derive]
-path = "idmap-derive"
-version = "0.2.22"
+intid = { workspace = true, features = ["derive"] }
 
 [features]
-default = []
 nightly = []
-# export derive macros
-derive = ["dep:idmap-derive"]
+# Support serde serialization
+serde = ["dep:serde"]
+# Implement petgraph::visit::VisitMap for IdSet
+petgraph = ["dep:petgraph"]
+
 
 [package.metadata.docs.rs]
-features = ["serde", "petgraph"]
-
+all-features = true

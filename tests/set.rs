@@ -1,10 +1,12 @@
-use idmap_derive::IntegerId;
+#![allow(missing_docs)]
+use intid::IntegerId;
 use itertools::Itertools;
 use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "serde")]
 use serde_test::{assert_tokens, Token};
 
-use idmap::{idset, IdSet};
+use idmap::direct::set::DirectIdSet as IdSet;
+use idmap::direct_idset as idset;
 use KnownState::*;
 
 #[test]
@@ -88,7 +90,7 @@ fn test_extend_ref() {
 #[test]
 fn test_retain() {
     let mut set = important_states();
-    set.retain(|&state| match state {
+    set.retain(|state| match state {
         NewYork => false, // New york city is too big!
         California | Arizona => true,
         _ => unreachable!(),
@@ -145,7 +147,7 @@ fn test_struct_wrapper() {
 
 #[test]
 fn test_insert_expand() {
-    let mut data = idset!(0);
+    let mut data = idset!(0u32);
     assert_eq!(data.insert(0), true);
     assert_eq!(data.insert(15), false);
     assert_eq!(data.insert(512), false);
@@ -153,9 +155,9 @@ fn test_insert_expand() {
     assert_eq!(data.insert(512), true);
 }
 
-#[derive(IntegerId, Debug, PartialEq)]
+#[derive(IntegerId, Copy, Clone, Eq, Debug, PartialEq)]
 struct ExampleWrapper(u16);
-#[derive(IntegerId, Debug, PartialEq)]
+#[derive(IntegerId, Copy, Clone, Eq, Debug, PartialEq)]
 struct ExampleStructWrapper {
     value: u16,
 }

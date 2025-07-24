@@ -1,6 +1,6 @@
 check: && check-format
     cargo +nightly clippy --all-features
-    cargo doc --no-deps
+    cargo doc --no-deps --all-features
 
 test: check
     cargo +nightly test --all-features

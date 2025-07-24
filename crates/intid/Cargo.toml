@@ -1,0 +1,31 @@
+[package]
+name = "intid"
+description = "Defines the IntegerId trait, for types that can be identified by an integer"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories = ["no-std::no-alloc", "no-std", "rust-patterns", "data-structures"]
+
+[dependencies]
+intid-derive = { workspace = true, optional = true }
+num-traits = { version = "0.2", optional = true }
+nonmax = { version = "0.5", optional = true }
+bytemuck = { version = "1", optional = true }
+
+[features]
+default = []
+# Export a procedural macro implementing IntegerId
+derive = ["dep:intid-derive"]
+# Have UnsignedPrimitiveInteger extend num_traits::PrimInt
+num-traits = ["dep:num-traits"]
+# Implement IntegerId for the nonmax integer types
+nonmax = ["dep:nonmax"]
+# integration with bytemuck
+bytemuck = ["dep:bytemuck"]
+
+[lints]
+workspace = true
