@@ -52,7 +52,7 @@ pub use uint::UnsignedPrimInt;
 /// when passed to `T::from_int_unchecked`.
 ///
 /// These restrictions also apply to all implemented sub-traits in this crate,
-/// including [`ContiguousIntegerId`] and [`IntegerIdIncrement`].
+/// including [`ContiguousIntegerId`] and [`IntegerIdCounter`].
 ///
 /// This restriction allows avoiding unnecessary checks when ids are stored to/from another data structure.
 /// Despite this requirement, I still consider this trait safe to implement,
@@ -125,20 +125,13 @@ pub trait ContiguousIntegerId: IntegerId {
     /// The value of this type with the largest integer value.
     const MAX_ID: Self;
 }
-/// An [`IntegerId`] for which it makes sense to increment values,
-/// starting from a default [`Self::START`] value.
+
+/// An [`IntegerId`] that can be sensibly used as a counter,
+/// starting at a [`Self::START`] value and being incremented from there.
 ///
 /// This is used by the `intid-allocator` crate to provide an atomic counter to allocate new ids.
 /// It also provides more complex allocators that can reuse ids that have been freed.
-///
-/*
- * TODO: Come up with a better name for this trait.
- *
- * This used to be implemented as START: Option<Self> on the main trait.
- * This may be preferable because it reduces the number of traits involved
- * and  it allows implicit derive without explicitly requesting #[intid(increment)]
- */
-pub trait IntegerIdIncrement: IntegerId + ContiguousIntegerId {
+pub trait IntegerIdCounter: IntegerId + ContiguousIntegerId {
     /// Where a counter a should start from.
     ///
     /// This should be the [`Default`] value if one is defined.
@@ -147,7 +140,7 @@ pub trait IntegerIdIncrement: IntegerId + ContiguousIntegerId {
     /// Increment this value by the specified offset,
     /// returning `None` if the value overflows or is invalid.
     ///
-    /// By contract, this should behavave consistently with [`ContiguousIntegerId`]
+    /// This should behavave consistently with [`ContiguousIntegerId`]
     /// and [`IntegerId::from_int_checked`].
     /// However, that can not be relied upon for memory safety.
     #[inline]

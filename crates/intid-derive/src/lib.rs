@@ -89,13 +89,13 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     } else {
                         quote!()
                     };
-                    let increment_impl = if let Some(increment) = options.increment {
+                    let counter_impl = if let Some(counter) = options.counter {
                         quote_spanned! {
-                            increment =>
+                            counter =>
                             #[automatically_derived]
-                            impl intid::IntegerIdIncrement for #name {
+                            impl intid::IntegerIdCounter for #name {
                                 const START: Self = #name {
-                                    #field_name: <#field_type as intid::IntegerIdIncrement>::START,
+                                    #field_name: <#field_type as intid::IntegerIdCounter>::START,
                                 };
                             }
                         }
@@ -127,7 +127,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                             }
                         }
                         #contiguous_impl
-                        #increment_impl
+                        #counter_impl
                         #from_impl
                     })
                 }
@@ -179,10 +179,10 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
             {
                 let Options {
                     nofrom: _,
-                    increment,
+                    counter,
                     contiguous,
                 } = options;
-                if let Some(inc) = increment {
+                if let Some(inc) = counter {
                     errors.push(syn::Error::new(inc, "Not currently supported for enums"))
                 }
                 if let Some(inc) = contiguous {
@@ -241,7 +241,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
 struct Options {
     /// Do not include the automatic from implementation.
     nofrom: Option<Span>,
-    increment: Option<Span>,
+    counter: Option<Span>,
     contiguous: Option<Span>,
 }
 impl Options {
@@ -251,8 +251,8 @@ impl Options {
             if meta.path.is_ident("nofrom") {
                 res.nofrom = Some(meta.path.span());
                 Ok(())
-            } else if meta.path.is_ident("increment") {
-                res.increment = Some(meta.path.span());
+            } else if meta.path.is_ident("counter") {
+                res.counter = Some(meta.path.span());
                 Ok(())
             } else if meta.path.is_ident("contiguous") {
                 res.contiguous = Some(meta.path.span());
@@ -261,10 +261,10 @@ impl Options {
                 Err(meta.error("Invalid attribute"))
             }
         })?;
-        if let (Some(increment), None) = (res.increment, res.contiguous) {
+        if let (Some(counter), None) = (res.counter, res.contiguous) {
             Err(syn::Error::new(
-                increment.span(),
-                "The `increment` option requires the `contiguous` option",
+                counter.span(),
+                "The `counter` option requires the `contiguous` option",
             ))
         } else {
             Ok(res)

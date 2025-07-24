@@ -17,7 +17,7 @@ macro_rules! impl_primint {
             const MIN_ID: Self = 0;
             const MAX_ID: Self = $target::MAX;
         }
-        impl crate::IntegerIdIncrement for $target {
+        impl crate::IntegerIdCounter for $target {
             const START: Self = 0;
         }
     )*};
@@ -62,7 +62,7 @@ macro_rules! impl_nonzero_int {
                 }
             };
         }
-        impl crate::IntegerIdIncrement for core::num::$target {
+        impl crate::IntegerIdCounter for core::num::$target {
             const START: Self = <Self as crate::ContiguousIntegerId>::MIN_ID;
         }
     )*}
@@ -99,7 +99,7 @@ macro_rules! do_nonmax_impl {
             const MIN_ID: Self = nonmax::$target::ZERO;
             const MAX_ID: Self = nonmax::$target::MAX;
         }
-        impl crate::IntegerIdIncrement for nonmax::$target {
+        impl crate::IntegerIdCounter for nonmax::$target {
             const START: Self = nonmax::$target::ZERO;
         }
     )*};
