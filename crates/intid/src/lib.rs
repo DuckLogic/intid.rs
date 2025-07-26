@@ -176,21 +176,6 @@ pub trait IntegerIdCounter: IntegerId + ContiguousIntegerId {
     }
 }
 
-/// An identifier with a restricted range of integer values,
-/// such that all valid ids fall beneath a reasonably small upper bound.
-///
-/// This trait is intended primarily for C-like enums where it is reasonable
-/// to implement a `Map<K, V>` via a fixed-size array `[V; { K::UPPER_BOUND + 1 }]`
-/// and a set as a fixed-size bitset as `[u32; { (K::UPPER_BOUND / u32::BITS) + 1]``
-/// For integers larger than a `u32`, this is not reasonable.
-pub trait BoundedIntegerId: IntegerId {
-    /// The upper bound of the type, past which there are no valid ids.
-    ///
-    /// ## Safety
-    /// In general, this value can not be relied upon for correctness.
-    const UPPER_BOUND: usize;
-}
-
 /// A wrapper around an [`IntegerId`] which implements [`Eq`], [`Ord`], and [`Hash`]
 /// based on the integer value.
 #[derive(Copy, Clone, Debug)]
