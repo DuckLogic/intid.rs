@@ -1,16 +1,14 @@
-rust-idmap [![Crates.io](https://img.shields.io/crates/v/idmap.svg)](https://crates.io/crates/idmap) [![Documentation](https://docs.rs/idmap/badge.svg)](https://docs.rs/idmap)
+idmap.rs [![Crates.io](https://img.shields.io/crates/v/idmap.svg)](https://crates.io/crates/idmap) [![Documentation](https://docs.rs/idmap/badge.svg)](https://docs.rs/idmap)
 ==========
-Efficient maps of integer id keys to values, backed by an underlying `Vec`.
+Efficient maps of integer id keys to values.
 
-## Features
-- Compiles on stable rust
-  - I only officially support the latest stable ;)
-- Automatically derived `IntegerId` for enums and newtype structs
-  - Implemented in the `idmap-derive` proc_macro crate
-- Maintains insertion order of the entries, as there's an indirection like `OrderMap`.
-  - Therefore, entries which aren't present take little space, as only a `u32` needs to be stored.
-  - This indirection can be avoided with a `DirectIdMap` which doesn't preserve order,
-    and saves space when the ids of the map's keys are densely packed and mostly present.
+A `DirectIdMap` is a strongly typed wrapper around a `Vec<Option<V>>` lookup table, and the `DirectIdSet` is a similar wrapper around a bitset.
+
+The `intid-allocator` crate provides a way to efficiently allocate and free integer ids,
+which reduces the memory needed to use these lookup tables.
+
+This is based on an `IntegerId` trait defined in the `intid` crate.
+The trait can be derived for newtype structs and C-like enums using the `intid-derive` procedural macro.
 
 ## License
 Licensed under either the [Apache 2.0 License](./LICENSE-APACHE.txt) or [MIT License](./LICENSE-MIT.txt) at your option.
