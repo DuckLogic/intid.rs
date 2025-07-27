@@ -29,7 +29,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
         .map(Options::parse_attr)
         .unwrap_or_else(|| Ok(Options::default()))?;
     let name = &ast.ident;
-    let from_impl = if options.nofrom.is_some() {
+    let from_impl = if options.from.is_none() {
         quote!()
     } else {
         quote! {
@@ -178,7 +178,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
             }
             {
                 let Options {
-                    nofrom: _,
+                    from: _,
                     counter,
                     contiguous,
                 } = options;
@@ -239,8 +239,8 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
 
 #[derive(Default, Debug)]
 struct Options {
-    /// Do not include the automatic from implementation.
-    nofrom: Option<Span>,
+    /// Automatically generate a `From<&Self>` implementation
+    from: Option<Span>,
     counter: Option<Span>,
     contiguous: Option<Span>,
 }
@@ -248,8 +248,8 @@ impl Options {
     fn parse_attr(attr: &syn::Attribute) -> syn::Result<Self> {
         let mut res = Options::default();
         attr.parse_nested_meta(|meta| {
-            if meta.path.is_ident("nofrom") {
-                res.nofrom = Some(meta.path.span());
+            if meta.path.is_ident("from") {
+                res.from = Some(meta.path.span());
                 Ok(())
             } else if meta.path.is_ident("counter") {
                 res.counter = Some(meta.path.span());
