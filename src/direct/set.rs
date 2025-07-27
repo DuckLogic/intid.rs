@@ -11,7 +11,7 @@ use core::ops::Index;
 use iter::FusedIterator;
 
 use fixedbitset::{FixedBitSet, Ones};
-use intid::IntegerId;
+use intid::{EquivalentId, IntegerId};
 
 /// A set whose members implement [IntegerId].
 ///
@@ -65,8 +65,8 @@ impl<T: IntegerId> DirectIdSet<T> {
     /// Remove the specified value from the set,
     /// returning whether it was previously present.
     #[inline]
-    pub fn remove(&mut self, value: impl Into<T>) -> bool {
-        let value = value.into().to_int();
+    pub fn remove(&mut self, value: impl EquivalentId<T>) -> bool {
+        let value = value.as_id().to_int();
         let Some(index) = intid::uint::to_usize_checked(value) else {
             return false; // overflow -> not present
         };
@@ -86,8 +86,8 @@ impl<T: IntegerId> DirectIdSet<T> {
 
     /// Check if this set contains the specified value
     #[inline]
-    pub fn contains(&self, value: impl Into<T>) -> bool {
-        let value = value.into().to_int();
+    pub fn contains(&self, value: impl EquivalentId<T>) -> bool {
+        let value = value.as_id().to_int();
         // is_some_and requires 1.70
         match intid::uint::to_usize_checked(value) {
             None => false,

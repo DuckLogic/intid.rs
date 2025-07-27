@@ -4,7 +4,7 @@ use crate::direct::oom_id;
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use intid::IntegerId;
+use intid::{EquivalentId, IntegerId};
 
 /// A map implemented as a [`Vec<Option<T>>`],
 /// which takes space proportional to the size of the maximum id.
@@ -64,8 +64,8 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
 
     /// Get the value associated with the specified key, or `None` if missing.
     #[inline]
-    pub fn get(&self, id: impl Into<K>) -> Option<&V> {
-        let id = id.into();
+    pub fn get(&self, id: impl EquivalentId<K>) -> Option<&V> {
+        let id = id.as_id();
         self.values
             .get(intid::uint::to_usize_checked(id.to_int())?)?
             .as_ref()
@@ -74,8 +74,8 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     /// Get a mutable reference to the value associated with the specified key,
     /// or `None` if missing.
     #[inline]
-    pub fn get_mut(&mut self, id: impl Into<K>) -> Option<&mut V> {
-        let id = id.into();
+    pub fn get_mut(&mut self, id: impl EquivalentId<K>) -> Option<&mut V> {
+        let id = id.as_id();
         self.values
             .get_mut(intid::uint::to_usize_checked(id.to_int())?)?
             .as_mut()
@@ -97,8 +97,8 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     /// Remove a value associated with the given,
     /// returning the previous value ifp resent.
     #[inline]
-    pub fn remove(&mut self, id: impl Into<K>) -> Option<V> {
-        let id = id.into().to_int();
+    pub fn remove(&mut self, id: impl EquivalentId<K>) -> Option<V> {
+        let id = id.as_id().to_int();
         let id = intid::uint::to_usize_checked(id).unwrap_or_else(|| oom_id(id));
         if id >= self.values.len() {
             return None;
