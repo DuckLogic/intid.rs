@@ -1,14 +1,12 @@
-idmap.rs [![Crates.io](https://img.shields.io/crates/v/idmap.svg)](https://crates.io/crates/idmap) [![Documentation](https://docs.rs/idmap/badge.svg)](https://docs.rs/idmap)
+intid.rs [![Crates.io](https://img.shields.io/crates/v/intid.svg)](https://crates.io/crates/intid) [![Documentation](https://docs.rs/intid/badge.svg)](https://docs.rs/idntid)
 ==========
-Efficient maps of integer id keys to values.
+A set of libraries and data structures for operating on integer-like ids. Supports the common rust pattern of wrapping integer ids in newtypes.
 
-A `DirectIdMap` is a strongly typed wrapper around a `Vec<Option<V>>` lookup table, and the `DirectIdSet` is a similar wrapper around a bitset.
+The [idmap](idmap/README.md) crate provides a strongly typed wrapper around a `Vec<Option<V>>` lookup table (`DirectIdMap`) and a similar wrapper around a bitset (`DirectIdSet`).
 
-The `intid-allocator` crate provides a way to efficiently allocate and free integer ids,
-which reduces the memory needed to use these lookup tables.
+The `intid-allocator` crate provides a way to efficiently track and reuse unused ids, minimizing a memory needed for lookup tables.
 
-This is based on an `IntegerId` trait defined in the `intid` crate.
-The trait can be derived for newtype structs and C-like enums using the `intid-derive` procedural macro.
+The `intid` crate defines the foundational `IntegerId` trait. Enabling the `derive` feature adds a derive macro.
 
 ## License
 Licensed under either the [Apache 2.0 License](./LICENSE-APACHE.txt) or [MIT License](./LICENSE-MIT.txt) at your option.

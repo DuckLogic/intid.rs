@@ -1,0 +1,40 @@
+[package]
+name = "idmap"
+version.workspace = true
+description = "Efficient maps of integer id keys to values, backed by an underlying `Vec`"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+readme = "README.md"
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+nightly = []
+# Support serde serialization
+serde = ["dep:serde"]
+# Implement petgraph::visit::VisitMap for IdSet
+petgraph = ["dep:petgraph"]
+
+[dependencies]
+# Defines the IntegerId trait
+intid.workspace = true
+# Used for DirectIdSet
+fixedbitset = "0.5"
+# optional features
+serde = { version = "1", optional = true }
+petgraph = { version = "0.8", optional = true }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+# Testing serde
+serde = "1"
+serde_test = "1"
+serde_derive = "1"
+itertools = "0.14"
+intid = { workspace = true, features = ["derive"] }
+
+[package.metadata.docs.rs]
+all-features = true
