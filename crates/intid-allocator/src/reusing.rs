@@ -43,8 +43,12 @@ impl<T: IntegerIdCounter> IdAllocator<T> {
     }
 
     /// Create a new allocator, with ids starting at the specified value.
+    ///
+    /// This function is a `const fn` on all rust versions since 1.80.
+    /// Before that release, it can only be called at runtime.
     #[inline]
     #[rustversion::attr(since(1.80), const)]
+    #[rustversion::attr(since(1.80), clippy::msrv = "1.80")]
     pub fn with_start(start: T) -> Self {
         IdAllocator {
             next_id: UniqueIdAllocator::with_start(start),
