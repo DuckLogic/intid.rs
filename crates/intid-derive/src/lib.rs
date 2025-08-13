@@ -95,8 +95,9 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                             #[automatically_derived]
                             impl intid::IntegerIdCounter for #name {
                                 const START: Self = #name {
-                                    #field_name: <#field_type as intid::IntegerIdCounter>::START,
+                                    #field_name: <#field_type as intid::IntegerIdCounter>::START_INT,
                                 };
+                                const START_INT: Self::Int = <#field_type as intid::IntegerIdCounter>::START_INT;
                             }
                         }
                     } else {

@@ -17,5 +17,8 @@ syn = "2"
 quote = "1"
 proc-macro2 = "1"
 
+[dev-dependencies]
+intid.path = "../intid"
+
 [lints]
 workspace = true
