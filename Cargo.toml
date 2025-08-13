@@ -23,7 +23,7 @@ members = [".", "crates/*"]
 default-members = [".", "crates/*"]
 
 [workspace.package]
-version = "0.3.0-alpha.2"
+version = "0.3.0-alpha.3"
 repository = "https://github.com/DuckLogic/intid.rs"
 authors = ["Techcable <git@techcable.net>"]
 readme = "README.md"
