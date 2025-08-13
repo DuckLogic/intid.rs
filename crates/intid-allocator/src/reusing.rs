@@ -8,7 +8,7 @@ use intid::IntegerIdCounter;
 /// reducing memory needed for lookup tables and bitsets.
 /// It is useful in conjunction with the "direct" maps/sets of the [idmap crate][idmap].
 ///
-/// If the ability to free unused ids is not necesasary,
+/// If the ability to free unused ids is not necessary,
 /// consider [`crate::UniqueIdAllocator`] or [`crate::UniqueIdAllocatorAtomic`].
 /// These are more efficient and do not require an allocator.
 ///
