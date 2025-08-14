@@ -9,7 +9,7 @@ mod impls;
 pub mod uint;
 
 #[cfg(feature = "derive")]
-pub use intid_derive::IntegerId;
+pub use intid_derive::{IntegerId, IntegerIdContiguous, IntegerIdCounter};
 
 pub use uint::UnsignedPrimInt;
 

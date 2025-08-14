@@ -1,17 +1,16 @@
 #![allow(missing_docs)]
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, intid_derive::IntegerId)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, intid::IntegerId)]
 pub enum Letter {
     A,
     B,
     C,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, intid_derive::IntegerId)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, intid::IntegerId)]
 pub struct Plain(u64);
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, intid_derive::IntegerId)]
-#[intid(counter, contiguous)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, intid::IntegerId, intid::IntegerIdCounter)]
 pub struct Counter(u32);
 
 #[test]

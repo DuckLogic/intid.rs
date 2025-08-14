@@ -9,9 +9,112 @@ use quote::{quote, quote_spanned};
 
 use proc_macro2::TokenStream;
 use syn::spanned::Spanned;
-use syn::{Data, DeriveInput, Expr, ExprLit, Fields, Lit, Member};
+use syn::{Data, DataStruct, DeriveInput, Expr, ExprLit, Fields, Lit, Member, Type};
 
-/// Implements [`IntegerId`] for a newetype struct or C-like enum.
+/// Implements `intid::IntegerIdContiguous` for a newtype struct.
+///
+/// This is automatically derived when deriving `IntegerIdCounter`.
+#[proc_macro_derive(IntegerIdContiguous, attributes(intid))]
+pub fn integer_id_contiguous(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse(input).unwrap();
+    impl_contiguous(&ast)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
+    const TRAIT_NAME: &str = "IntegerIdContiguous";
+    // No need to parse options (we don't care)
+    let name = &ast.ident;
+    let data = ensure_only_struct(&ast.data, TRAIT_NAME)?;
+    let NewtypeStructInfo {
+        field_name,
+        field_type,
+    } = ensure_newtype_struct(&ast.ident, data, TRAIT_NAME)?;
+    let field_type_as_contig = quote_spanned! {
+        field_type.span() => <#field_type as intid::IntegerIdContiguous>
+    };
+    Ok(quote! {
+        #[automatically_derived]
+        impl intid::IntegerIdContiguous for #name {
+            const MIN_ID: Self = #name {
+                #field_name: #field_type_as_contig::MIN_ID,
+            };
+            const MAX_ID: Self = #name {
+                #field_name: #field_type_as_contig::MAX_ID,
+            };
+        }
+    })
+}
+
+/// Implements `intid::IntegerIdCounter` for a newtype struct.
+///
+/// ```rust
+/// use intid::{IntegerId, IntegerIdCounter};
+/// #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+/// #[derive(IntegerIdCounter, IntegerId)]
+/// struct Example(u32);
+/// fn print_counter<T: IntegerIdCounter>() -> String {
+///     format!("Starting at {:?}", T::START)
+/// }
+/// assert_eq!(
+///     print_counter::<Example>(),
+///     "Starting at Example(0)"
+/// );
+/// ```
+///
+/// This will automatically derive `IntegerIdContiguous` trait as well,
+/// since that trait is necessary to implement `IntegerIdCounter`.
+/// Skip deriving the contiguous trait by using the attribute `#[intid(counter(skip_contiguous))]`:
+/// ```rust
+/// use intid::{IntegerIdCounter, IntegerId};
+/// #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+/// #[derive(IntegerId, IntegerIdCounter)]
+/// #[intid(counter(skip_contiguous))]
+/// struct Explicit(u32);
+/// impl intid::IntegerIdContiguous for Explicit {
+///     const MIN_ID: Self = Explicit(0);
+///     const MAX_ID: Self = Explicit(u32::MAX);
+/// }
+/// ```
+#[proc_macro_derive(IntegerIdCounter, attributes(intid))]
+pub fn integer_id_counter(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse(input).unwrap();
+    impl_id_counter(&ast)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+fn impl_id_counter(ast: &DeriveInput) -> syn::Result<TokenStream> {
+    const TRAIT_NAME: &str = "IntegerIdCounter";
+    let options = parse_options(ast)?;
+    // No need to parse options (we don't care)
+    let name = &ast.ident;
+    let data = ensure_only_struct(&ast.data, TRAIT_NAME)?;
+    let NewtypeStructInfo {
+        field_name,
+        field_type,
+    } = ensure_newtype_struct(&ast.ident, data, TRAIT_NAME)?;
+    let field_type_as_counter = quote_spanned! {
+        field_type.span() => <#field_type as intid::IntegerIdCounter>
+    };
+    let contig_impl = match options.counter {
+        Some(ref x) if x.skip_contiguous.is_some() => quote!(),
+        None | Some(_) => impl_contiguous(ast)?,
+    };
+    Ok(quote! {
+        #contig_impl
+        #[automatically_derived]
+        impl intid::IntegerIdCounter for #name {
+            const START: Self = #name {
+                #field_name: #field_type_as_counter::START_INT,
+            };
+            const START_INT: Self::Int = #field_type_as_counter::START_INT;
+        }
+    })
+}
+
+/// Implements `intid::IntegerId` for a newtype struct or C-like enum.
 #[proc_macro_derive(IntegerId, attributes(intid))]
 pub fn integer_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
@@ -22,12 +125,7 @@ pub fn integer_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 // The compiler doesn't seem to know when variables are used in the macro
 fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
-    let options = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.meta.path().is_ident("intid"))
-        .map(Options::parse_attr)
-        .unwrap_or_else(|| Ok(Options::default()))?;
+    let options = parse_options(ast)?;
     let name = &ast.ident;
     let from_impl = if options.from.is_none() {
         quote!()
@@ -73,35 +171,18 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     let impl_to_int = quote_spanned! { field_type.span() => #field_type_as_id::to_int(self.#field_name) };
                     let impl_decl =
                         quote_spanned! { name.span() => impl intid::IntegerId for #name };
-                    let contiguous_impl = if let Some(contiguous) = options.contiguous {
-                        quote_spanned! {
-                            contiguous =>
-                            #[automatically_derived]
-                            impl intid::IntegerIdContiguous for #name {
-                                const MIN_ID: Self = #name {
-                                    #field_name: <#field_type as intid::IntegerIdContiguous>::MIN_ID,
-                                };
-                                const MAX_ID: Self = #name {
-                                    #field_name: <#field_type as intid::IntegerIdContiguous>::MIN_ID,
-                                };
+                    let verify_counter_impl = match options.counter {
+                        Some(CounterOptions { name_span, .. }) => {
+                            // If the counter option is used, we should be a counter
+                            quote_spanned! { name_span =>
+                                {
+                                    #[inline(always)]
+                                    fn verify_counter<T: intid::IntegerIdCounter>() {}
+                                    verify_counter::<#name>();
+                                }
                             }
                         }
-                    } else {
-                        quote!()
-                    };
-                    let counter_impl = if let Some(counter) = options.counter {
-                        quote_spanned! {
-                            counter =>
-                            #[automatically_derived]
-                            impl intid::IntegerIdCounter for #name {
-                                const START: Self = #name {
-                                    #field_name: <#field_type as intid::IntegerIdCounter>::START_INT,
-                                };
-                                const START_INT: Self::Int = <#field_type as intid::IntegerIdCounter>::START_INT;
-                            }
-                        }
-                    } else {
-                        quote!()
+                        None => quote!(),
                     };
                     Ok(quote! {
                         #[automatically_derived]
@@ -110,6 +191,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
 
                             #[inline]
                             fn from_int(int: #int_type) -> Self {
+                                #verify_counter_impl
                                 #impl_from_int
                             }
                             #[inline]
@@ -127,8 +209,6 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                                 #impl_to_int
                             }
                         }
-                        #contiguous_impl
-                        #counter_impl
                         #from_impl
                     })
                 }
@@ -177,19 +257,6 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                 variant_matches.push(quote!(#idx => #name::#ident));
                 idx += 1;
             }
-            {
-                let Options {
-                    from: _,
-                    counter,
-                    contiguous,
-                } = options;
-                if let Some(inc) = counter {
-                    errors.push(syn::Error::new(inc, "Not currently supported for enums"))
-                }
-                if let Some(inc) = contiguous {
-                    errors.push(syn::Error::new(inc, "Not currently supported for enums"))
-                }
-            }
             let mut errors = errors.into_iter();
             if let Some(mut error) = errors.next() {
                 for other in errors {
@@ -221,7 +288,6 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                             }
                         }
 
-
                         #[inline]
                         fn to_int(self) -> usize {
                             self as usize
@@ -238,37 +304,111 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
     }
 }
 
+fn ensure_only_struct<'a>(ast: &'a Data, trait_name: &str) -> syn::Result<&'a DataStruct> {
+    match ast {
+        Data::Struct(ref data) => Ok(data),
+        Data::Enum(ref data) => Err(syn::Error::new_spanned(
+            data.enum_token,
+            format!("Deriving {trait_name} is not currently supported for enums"),
+        )),
+        Data::Union(ref data) => Err(syn::Error::new_spanned(
+            data.union_token,
+            format!("Deriving {trait_name} is not supported for unions"),
+        )),
+    }
+}
+
+struct NewtypeStructInfo<'a> {
+    field_name: Member,
+    field_type: &'a Type,
+}
+
+fn ensure_newtype_struct<'a>(
+    ident: &Ident,
+    data: &'a DataStruct,
+    trait_name: &str,
+) -> syn::Result<NewtypeStructInfo<'a>> {
+    let fields = &data.fields;
+    match fields.len() {
+        1 => {
+            let field = fields.iter().next().unwrap();
+            let field_name = field
+                .ident
+                .clone()
+                .map_or_else(|| Member::from(0), Member::from);
+            let field_type = &field.ty;
+            Ok(NewtypeStructInfo {
+                field_name,
+                field_type,
+            })
+        }
+        0 => Err(syn::Error::new_spanned(
+            ident,
+            format!("{trait_name} does not currently support empty structs"),
+        )),
+        _ => Err(syn::Error::new_spanned(
+            fields.iter().nth(1).unwrap(),
+            format!("{trait_name} can only be applied to structs with a single field"),
+        )),
+    }
+}
+
+fn parse_options(ast: &DeriveInput) -> syn::Result<MainOptions> {
+    ast.attrs
+        .iter()
+        .find(|attr| attr.meta.path().is_ident("intid"))
+        .map(MainOptions::parse_attr)
+        .unwrap_or_else(|| Ok(MainOptions::default()))
+}
+
 #[derive(Default, Debug)]
-struct Options {
+struct MainOptions {
     /// Automatically generate a `From<&Self>` implementation
     from: Option<Span>,
-    counter: Option<Span>,
-    contiguous: Option<Span>,
+    /// Options specific to a counter.
+    counter: Option<CounterOptions>,
 }
-impl Options {
+impl MainOptions {
     fn parse_attr(attr: &syn::Attribute) -> syn::Result<Self> {
-        let mut res = Options::default();
+        let mut res = MainOptions::default();
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("from") {
                 res.from = Some(meta.path.span());
                 Ok(())
             } else if meta.path.is_ident("counter") {
-                res.counter = Some(meta.path.span());
-                Ok(())
-            } else if meta.path.is_ident("contiguous") {
-                res.contiguous = Some(meta.path.span());
+                if res.counter.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        &meta.path,
+                        "Specified counter twice",
+                    ));
+                }
+                let mut counter_opts = CounterOptions {
+                    name_span: meta.path.span(),
+                    skip_contiguous: None,
+                };
+                if meta.input.peek(syn::token::Paren) {
+                    meta.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("skip_contiguous") {
+                            counter_opts.skip_contiguous = Some(meta.path.span());
+                            Ok(())
+                        } else {
+                            Err(meta.error("Invalid `counter` attribute"))
+                        }
+                    })?;
+                }
+                res.counter = Some(counter_opts);
                 Ok(())
             } else {
                 Err(meta.error("Invalid attribute"))
             }
         })?;
-        if let (Some(counter), None) = (res.counter, res.contiguous) {
-            Err(syn::Error::new(
-                counter.span(),
-                "The `counter` option requires the `contiguous` option",
-            ))
-        } else {
-            Ok(res)
-        }
+        Ok(res)
     }
+}
+
+#[derive(Debug)]
+struct CounterOptions {
+    /// The span for the `counter` ident.
+    name_span: Span,
+    skip_contiguous: Option<Span>,
 }

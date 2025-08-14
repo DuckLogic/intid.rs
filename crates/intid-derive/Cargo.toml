@@ -18,7 +18,7 @@ quote = "1"
 proc-macro2 = "1"
 
 [dev-dependencies]
-intid.workspace = true
+intid = { workspace = true, features = ["derive"] }
 
 [lints]
 workspace = true
