@@ -6,6 +6,7 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 
 mod impls;
+pub mod keys;
 pub mod uint;
 
 #[cfg(feature = "derive")]
@@ -203,35 +204,5 @@ impl<T: IntegerId> Hash for OrderByInt<T> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.to_int().hash(state)
-    }
-}
-
-/// A type that can be for lookup as an [`IntegerId`].
-///
-/// Used for key lookup in maps, similar to [core::borrow::Borrow] or [equivalent::Equivalent].
-/// These traits are not suitable for id maps,
-/// which need conversion to integers rather than hashing/equality.
-///
-/// [equivalent::Equivalent]: https://docs.rs/equivalent/latest/equivalent/trait.Equivalent.html
-pub trait EquivalentId<K: IntegerId> {
-    /// Convert this type to an id `K`.
-    fn as_id(&self) -> K;
-}
-impl<K: IntegerId> EquivalentId<K> for K {
-    #[inline]
-    fn as_id(&self) -> K {
-        *self
-    }
-}
-impl<K: IntegerId> EquivalentId<K> for &'_ K {
-    #[inline]
-    fn as_id(&self) -> K {
-        **self
-    }
-}
-impl<K: IntegerId> EquivalentId<K> for &'_ mut K {
-    #[inline]
-    fn as_id(&self) -> K {
-        **self
     }
 }

@@ -4,28 +4,29 @@ use crate::direct::oom_id;
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use intid::{EquivalentId, IntegerId};
+use intid::IntegerId;
+use intid::keys::{EquivalentIntKey, IntegerKey};
 
 /// A map implemented as a [`Vec<Option<T>>`],
 /// which takes space proportional to the size of the maximum id.
 ///
 /// There is no entry API because the overhead of lookups is very small.
 #[derive(Clone)]
-pub struct DirectIdMap<K: IntegerId, V> {
+pub struct DirectIdMap<K: IntegerKey, V> {
     // Optimization idea: If `Option<V>` does not support the nullable-pointer optimization,
     // fallback to using a bitset + MaybeUninit.
     // In some cases, this could save a significant amount of space.
-    values: Vec<Option<V>>,
+    values: Vec<Option<(K::Storage, V)>>,
     len: usize,
     marker: PhantomData<K>,
 }
-impl<K: IntegerId, V> Default for DirectIdMap<K, V> {
+impl<K: IntegerKey, V> Default for DirectIdMap<K, V> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
-impl<K: IntegerId, V> DirectIdMap<K, V> {
+impl<K: IntegerKey, V> DirectIdMap<K, V> {
     /// Create a new map with no entries.
     #[inline]
     pub const fn new() -> Self {
@@ -64,50 +65,71 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
 
     /// Get the value associated with the specified key, or `None` if missing.
     #[inline]
-    pub fn get(&self, id: impl EquivalentId<K>) -> Option<&V> {
-        let id = id.as_id();
-        self.values
-            .get(intid::uint::to_usize_checked(id.to_int())?)?
-            .as_ref()
+    pub fn get(&self, key: impl EquivalentIntKey<K>) -> Option<&V> {
+        let index = EquivalentIntKey::to_key_index(&key);
+        let index = index.to_int();
+        match self.values.get(intid::uint::to_usize_checked(index)?)? {
+            Some((_, value)) => Some(value),
+            None => None,
+        }
     }
 
     /// Get a mutable reference to the value associated with the specified key,
     /// or `None` if missing.
     #[inline]
-    pub fn get_mut(&mut self, id: impl EquivalentId<K>) -> Option<&mut V> {
-        let id = id.as_id();
-        self.values
-            .get_mut(intid::uint::to_usize_checked(id.to_int())?)?
-            .as_mut()
+    pub fn get_mut(&mut self, key: impl EquivalentIntKey<K>) -> Option<&mut V> {
+        let index = EquivalentIntKey::to_key_index(&key);
+        match self.values.get_mut(intid::uint::to_usize_checked(index)?)? {
+            Some((_, value)) => Some(value),
+            None => None,
+        }
     }
 
     /// Insert a key and a value, returning the previous value.
     #[inline]
     pub fn insert(&mut self, id: K, value: V) -> Option<V> {
-        let id = id.to_int();
-        let id = intid::uint::to_usize_checked(id).unwrap_or_else(|| oom_id(id));
-        self.grow_to(id);
-        let old_value = self.values[id].replace(value);
-        if old_value.is_none() {
+        self.insert_entry(id, value).map(|(_, value)| value)
+    }
+
+    /// Insert a key and a value, returning the previous key and value.
+    #[inline]
+    pub fn insert_entry(&mut self, key: K, value: V) -> Option<(K, V)> {
+        let int = K::to_index(&key);
+        let index = intid::uint::to_usize_checked(int).unwrap_or_else(|| oom_id(int));
+        self.grow_to(index);
+        let old_entry = self.values[index].replace((K::into_storage(key), value));
+        if old_entry.is_none() {
             self.len += 1;
         }
-        old_value
+        old_entry.map(|(storage, value)| {
+            (K::from_storage(storage, int), value)
+        })
     }
 
     /// Remove a value associated with the given,
-    /// returning the previous value ifp resent.
+    /// returning the previous value if resent.
     #[inline]
-    pub fn remove(&mut self, id: impl EquivalentId<K>) -> Option<V> {
-        let id = id.as_id().to_int();
-        let id = intid::uint::to_usize_checked(id).unwrap_or_else(|| oom_id(id));
-        if id >= self.values.len() {
+    pub fn remove(&mut self, id: impl EquivalentIntKey<K>) -> Option<V> {
+        self.remove(id).map(|(_, value)| value)
+    }
+
+    /// Remove a value associated with the given,
+    /// returning the previous entry if resent.
+    #[inline]
+    pub fn remove_entry(&mut self, key: impl EquivalentIntKey<K>) -> Option<V> {
+        let int = EquivalentIntKey::to_key_index(&key);
+        let index = int.to_int();
+        let index = intid::uint::to_usize_checked(index).unwrap_or_else(|| oom_id(index));
+        if index >= self.values.len() {
             return None;
         }
-        let old_value = self.values[id].take();
-        if old_value.is_some() {
+        let old_entry = self.values[index].take();
+        if old_entry.is_some() {
             self.len -= 1;
         }
-        old_value
+        old_entry.map(|(storage, value)| {
+            (K::from_storage(storage, int), value)
+        })
     }
 
     #[inline]
@@ -156,13 +178,16 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     /// removing entries when the callback returns false.
     ///
     /// See also [std::collections::HashMap::retain].
+    ///
+    /// This requires cloning the keys.
     pub fn retain(&mut self, mut func: impl FnMut(K, &mut V) -> bool) {
         for (index, entry) in self.values.iter_mut().enumerate() {
-            if entry.is_none() {
+            let Some((storage, value)) = entry else {
                 continue;
-            }
+            };
             // SAFETY: If entry exists, the key is guaranteed to be valid
-            let key = unsafe { K::from_int_unchecked(intid::uint::from_usize_wrapping(index)) };
+            let int = unsafe { <K::Index as IntegerId>::from_int_unchecked(intid::uint::from_usize_wrapping(index)) };
+            let key = K::from_storage(storage.clone(), int);
             if !func(key, entry.as_mut().unwrap()) {
                 *entry = None;
                 self.len -= 1;
@@ -276,20 +301,21 @@ impl<K: IntegerId, V: Debug> Debug for DirectIdMap<K, V> {
 }
 macro_rules! impl_direct_iter {
     ($target:ident<$($l:lifetime,)? $kt:ident, $vt:ident> {
-        fn map($k:ident, $v:ident) -> $item_ty:ty {
+        fn map($int:ident, $storage:ident, $v:ident) -> $item_ty:ty {
             $map:expr
         }
     }) => {
-        impl<$($l,)* $kt: IntegerId, $vt> Iterator for $target<$($l,)* $kt, $vt> {
+        impl<$($l,)* $kt: IntegerKey, $vt> Iterator for $target<$($l,)* $kt, $vt> {
             type Item = $item_ty;
             #[inline]
             fn next(&mut self) -> Option<Self::Item> {
                 loop {
                     match self.source.next() {
-                        Some((index, Some($v))) => {
+                        Some((index, Some(($storage, $v)))) => {
+                            let int = intid::uint::from_usize_wrapping(index);
                             // SAFETY: Value exists => index is valid
-                            let $k = unsafe {
-                                $kt::from_int_unchecked(intid::uint::from_usize_wrapping(index))
+                            let $int = unsafe {
+                                <$kt::Index as IntegerId>::from_int_unchecked(int);
                             };
                             self.len -= 1;
                             return Some($map)
@@ -304,16 +330,18 @@ macro_rules! impl_direct_iter {
                 (self.len, Some(self.len))
             }
         }
-        impl<$($l,)* $kt: IntegerId, $vt> DoubleEndedIterator for $target<$($l,)* $kt, $vt> {
+        impl<$($l,)* $kt: IntegerKey, $vt> DoubleEndedIterator for $target<$($l,)* $kt, $vt> {
             #[inline]
             fn next_back(&mut self) -> Option<Self::Item> {
                 loop {
                     match self.source.next_back() {
-                        Some((index, Some($v))) => {
+                        Some((index, Some(($storage, $v)))) => {
+                            let int = intid::uint::from_usize_wrapping(index);
                             // SAFETY: Value exists => index is valid
-                            let $k = unsafe {
-                                $kt::from_int_unchecked(intid::uint::from_usize_wrapping(index))
+                            let $int = unsafe {
+                                <$kt::Index as IntegerId>::from_int_unchecked(int);
                             };
+                            self.len -= 1;
                             return Some($map)
                         },
                         Some((_, None)) => continue,
@@ -322,61 +350,61 @@ macro_rules! impl_direct_iter {
                 }
             }
         }
-        impl<$($l,)* $kt: IntegerId, $vt> ExactSizeIterator for $target<$($l,)* $kt, $vt> {}
-        impl<$($l,)* $kt: IntegerId, $vt> core::iter::FusedIterator for $target<$($l,)* $kt, $vt> {}
+        impl<$($l,)* $kt: IntegerKey, $vt> ExactSizeIterator for $target<$($l,)* $kt, $vt> {}
+        impl<$($l,)* $kt: IntegerKey, $vt> core::iter::FusedIterator for $target<$($l,)* $kt, $vt> {}
     }
 }
 /// An iterator consuming the entries in a [`DirectIdMap`]/
 ///
 /// Guaranteed to be ordered by the integer value of the key.
-pub struct IntoIter<K: IntegerId, V> {
-    source: core::iter::Enumerate<alloc::vec::IntoIter<Option<V>>>,
+pub struct IntoIter<K: IntegerKey, V> {
+    source: core::iter::Enumerate<alloc::vec::IntoIter<Option<(K::Storage, V)>>>,
     len: usize,
     marker: PhantomData<K>,
 }
 impl_direct_iter!(IntoIter<K, V> {
-    fn map(key, value) -> (K, V) {
-        (key, value)
+    fn map(int, storage, value) -> (K, V) {
+        (K::from_storage(storage, int), value)
     }
 });
 /// An iterator over the entries in a [`DirectIdMap`].
 ///
 /// Guaranteed to be ordered by the integer value of the key.
-pub struct Iter<'a, K: IntegerId, V> {
-    source: core::iter::Enumerate<core::slice::Iter<'a, Option<V>>>,
+pub struct Iter<'a, K: IntegerKey, V> {
+    source: core::iter::Enumerate<core::slice::Iter<'a, Option<(K::Storage, V)>>>,
     len: usize,
     marker: PhantomData<K>,
 }
 impl_direct_iter!(Iter<'a, K, V> {
-    fn map(key, value) -> (K, &'a V) {
-        (key, value)
+    fn map(int, storage, value) -> (K::Ref<'a>, &'a V) {
+        (K::from_storage_ref(storage, int), value)
     }
 });
 
 /// A mutable iterator over the entries in a [`DirectIdMap`].
 ///
 /// Guaranteed to be ordered by the integer value of the key.
-pub struct IterMut<'a, K: IntegerId, V> {
-    source: core::iter::Enumerate<core::slice::IterMut<'a, Option<V>>>,
+pub struct IterMut<'a, K: IntegerKey, V> {
+    source: core::iter::Enumerate<core::slice::IterMut<'a, Option<(K::Storage, V)>>>,
     len: usize,
     marker: PhantomData<K>,
 }
 impl_direct_iter!(IterMut<'a, K, V> {
-    fn map(key, value) -> (K, &'a mut V) {
-        (key, value)
+    fn map(int, storage, value) -> (K::MutRef<'a>, &'a mut V) {
+        (K::from_storage_mut(storage, int), value)
     }
 });
 
 /// A iterator over the values in a [`DirectIdMap`].
 ///
 /// Guaranteed to be ordered by the integer value of the key.
-pub struct Values<'a, K: IntegerId, V> {
-    source: core::iter::Enumerate<core::slice::Iter<'a, Option<V>>>,
+pub struct Values<'a, K: IntegerKey, V> {
+    source: core::iter::Enumerate<core::slice::Iter<'a, Option<(K::Storage, V)>>>,
     len: usize,
     marker: PhantomData<K>,
 }
 impl_direct_iter!(Values<'a, K, V> {
-    fn map(_key, value) -> &'a V {
+    fn map(_int, _storage, value) -> &'a V {
         value
     }
 });
@@ -384,13 +412,13 @@ impl_direct_iter!(Values<'a, K, V> {
 /// A mutable iterator over the values in a [`DirectIdMap`].
 ///
 /// Guaranteed to be ordered by the integer value of the key.
-pub struct ValuesMut<'a, K: IntegerId, V> {
-    source: core::iter::Enumerate<core::slice::IterMut<'a, Option<V>>>,
+pub struct ValuesMut<'a, K: IntegerKey, V> {
+    source: core::iter::Enumerate<core::slice::IterMut<'a, Option<(K::Storage, V)>>>,
     len: usize,
     marker: PhantomData<K>,
 }
 impl_direct_iter!(ValuesMut<'a, K, V> {
-    fn map(_key, value) -> &'a mut V {
+    fn map(_int, _storage, value) -> &'a mut V {
         value
     }
 });
@@ -398,14 +426,14 @@ impl_direct_iter!(ValuesMut<'a, K, V> {
 /// A iterator over the keys in a [`DirectIdMap`].
 ///
 /// Guaranteed to be ordered by the integer value of the key.
-pub struct Keys<'a, K: IntegerId, V> {
-    source: core::iter::Enumerate<core::slice::IterMut<'a, Option<V>>>,
+pub struct Keys<'a, K: IntegerKey, V> {
+    source: core::iter::Enumerate<core::slice::IterMut<'a, Option<(K::Storage, V)>>>,
     len: usize,
     marker: PhantomData<K>,
 }
 impl_direct_iter!(Keys<'a, K, V> {
-    fn map(key, _value) -> K {
-        key
+    fn map(int, storage, _value) -> K::Ref<'a> {
+        K::from_storage_ref(storage, int)
     }
 });
 
