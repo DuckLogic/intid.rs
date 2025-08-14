@@ -6,6 +6,7 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 
 mod impls;
+mod macros;
 pub mod uint;
 
 #[cfg(feature = "derive")]
