@@ -29,3 +29,6 @@ bytemuck = ["dep:bytemuck"]
 
 [lints]
 workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
