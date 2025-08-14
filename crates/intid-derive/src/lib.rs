@@ -77,12 +77,12 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                         quote_spanned! {
                             contiguous =>
                             #[automatically_derived]
-                            impl intid::ContiguousIntegerId for #name {
+                            impl intid::IntegerIdContiguous for #name {
                                 const MIN_ID: Self = #name {
-                                    #field_name: <#field_type as intid::ContiguousIntegerId>::MIN_ID,
+                                    #field_name: <#field_type as intid::IntegerIdContiguous>::MIN_ID,
                                 };
                                 const MAX_ID: Self = #name {
-                                    #field_name: <#field_type as intid::ContiguousIntegerId>::MIN_ID,
+                                    #field_name: <#field_type as intid::IntegerIdContiguous>::MIN_ID,
                                 };
                             }
                         }

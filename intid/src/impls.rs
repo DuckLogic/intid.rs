@@ -13,7 +13,7 @@ macro_rules! impl_primint {
                 self
             }
         }
-        impl crate::ContiguousIntegerId for $target {
+        impl crate::IntegerIdContiguous for $target {
             const MIN_ID: Self = 0;
             const MAX_ID: Self = $target::MAX;
         }
@@ -48,7 +48,7 @@ macro_rules! impl_nonzero_int {
                 self.get()
             }
         }
-        impl crate::ContiguousIntegerId for core::num::$target {
+        impl crate::IntegerIdContiguous for core::num::$target {
             const MIN_ID: Self = {
                 // while using NonZero::MIN might be nice, that requires rust 1.70
                 // SAFETY: One is not zero
@@ -64,7 +64,7 @@ macro_rules! impl_nonzero_int {
             };
         }
         impl crate::IntegerIdCounter for core::num::$target {
-            const START: Self = <Self as crate::ContiguousIntegerId>::MIN_ID;
+            const START: Self = <Self as crate::IntegerIdContiguous>::MIN_ID;
             const START_INT: $int = Self::START.get();
         }
     )*}
@@ -97,7 +97,7 @@ macro_rules! do_nonmax_impl {
                 self.get()
             }
         }
-        impl crate::ContiguousIntegerId for nonmax::$target {
+        impl crate::IntegerIdContiguous for nonmax::$target {
             const MIN_ID: Self = nonmax::$target::ZERO;
             const MAX_ID: Self = nonmax::$target::MAX;
         }

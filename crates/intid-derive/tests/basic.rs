@@ -22,7 +22,7 @@ fn verify_derive() {
 }
 
 fn assert_id<T: intid::IntegerId>() {}
-fn assert_contiguous<T: intid::ContiguousIntegerId>() {
+fn assert_contiguous<T: intid::IntegerIdContiguous>() {
     assert_id::<T>();
 }
 fn assert_counter<T: intid::IntegerIdCounter>() {

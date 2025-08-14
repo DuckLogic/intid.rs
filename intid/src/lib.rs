@@ -17,7 +17,7 @@ pub use uint::UnsignedPrimInt;
 ///
 ///
 /// The type should not carry any information beyond that of the integer index,
-/// and be able to lossleslly convert back and forth from [`Self::Int`].
+/// and be able to losslessly convert back and forth from [`Self::Int`].
 /// It is possible that not all values of the underlying integer type are valid,
 /// allowing [`core::num::NonZero`] and C-like enums to implement this trait.
 ///
@@ -54,9 +54,9 @@ pub use uint::UnsignedPrimInt;
 /// when passed to `T::from_int_unchecked`.
 ///
 /// The requirement for correctness in this case also apply to all sub-traits in this crate,
-/// including [`ContiguousIntegerId`] and [`IntegerIdCounter`].
+/// including [`IntegerIdContiguous`] and [`IntegerIdCounter`].
 /// So an unsafe implementation of `from_int_unchecked` can be similarly trusted to accept
-/// all integer values between [`ContiguousIntegerId::MIN_ID`] and [`ContiguousIntegerId::MAX_ID`].
+/// all integer values between [`IntegerIdContiguous::MIN_ID`] and [`IntegerIdContiguous::MAX_ID`].
 ///
 /// This restriction allows avoiding unnecessary checks when ids are stored to/from another data structure.
 /// Despite this requirement, I still consider this trait safe to implement,
@@ -109,6 +109,22 @@ pub trait IntegerId: Copy + Eq + Debug + 'static {
     /// since valid instances `Self` always correspond to valid instances of `Self::Int`.
     fn to_int(self) -> Self::Int;
 }
+
+/// The old name for [`IntegerIdContiguous`].
+///
+/// Will be removed in the full 0.3.0 release.
+#[deprecated(since = "0.3.0-beta.1", note = "Renamed to IntegerIdContiguous")]
+#[allow(missing_docs)] // deprecated
+pub trait ContiguousIntegerId: IntegerId {
+    const MIN_ID: Self;
+    const MAX_ID: Self;
+}
+#[allow(deprecated)]
+impl<T: IntegerIdContiguous> ContiguousIntegerId for T {
+    const MIN_ID: Self = <Self as IntegerIdContiguous>::MIN_ID;
+    const MAX_ID: Self = <Self as IntegerIdContiguous>::MIN_ID;
+}
+
 /// Indicates that an ida occupies contiguous range of contiguous values,
 /// between [`Self::MIN_ID`] and [`Self::MAX_ID`] inclusive.
 ///
@@ -123,7 +139,7 @@ pub trait IntegerId: Copy + Eq + Debug + 'static {
 /// then this trait must also be implemented correctly.
 /// More specifically, all integers between [`Self::MIN_ID`] and [`Self::MAX_ID`] must be valid
 /// and cannot fail when passed to [`IntegerId::from_int_checked`].
-pub trait ContiguousIntegerId: IntegerId {
+pub trait IntegerIdContiguous: IntegerId {
     /// The value of this type with the smallest integer value.
     const MIN_ID: Self;
     /// The value of this type with the largest integer value.
@@ -135,7 +151,7 @@ pub trait ContiguousIntegerId: IntegerId {
 ///
 /// This is used by the `intid-allocator` crate to provide an atomic counter to allocate new ids.
 /// It also provides more complex allocators that can reuse ids that have been freed.
-pub trait IntegerIdCounter: IntegerId + ContiguousIntegerId {
+pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
     /// Where a counter a should start from.
     ///
     /// This should be the [`Default`] value if one is defined.
@@ -152,7 +168,7 @@ pub trait IntegerIdCounter: IntegerId + ContiguousIntegerId {
     /// Increment this value by the specified offset,
     /// returning `None` if the value overflows or is invalid.
     ///
-    /// This should behave consistently with [`ContiguousIntegerId`]
+    /// This should behave consistently with [`IntegerIdContiguous`]
     /// and [`IntegerId::from_int_checked`].
     /// However, that can not be relied upon for memory safety.
     ///
@@ -165,7 +181,7 @@ pub trait IntegerIdCounter: IntegerId + ContiguousIntegerId {
     /// Increment this value by the specified offset,
     /// returning `None` if the value overflows or is invalid.
     ///
-    /// This should behave consistently with [`ContiguousIntegerId`]
+    /// This should behave consistently with [`IntegerIdContiguous`]
     /// and [`IntegerId::from_int_checked`].
     /// However, that can not be relied upon for memory safety.
     ///
