@@ -36,6 +36,7 @@ fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
     };
     Ok(quote! {
         #[automatically_derived]
+        #[allow(clippy::init_numbered_fields)]
         impl intid::IntegerIdContiguous for #name {
             const MIN_ID: Self = #name {
                 #field_name: #field_type_as_contig::MIN_ID,
@@ -105,6 +106,7 @@ fn impl_id_counter(ast: &DeriveInput) -> syn::Result<TokenStream> {
     Ok(quote! {
         #contig_impl
         #[automatically_derived]
+        #[allow(clippy::init_numbered_fields)]
         impl intid::IntegerIdCounter for #name {
             const START: Self = #name {
                 #field_name: #field_type_as_counter::START_INT,
@@ -186,6 +188,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     };
                     Ok(quote! {
                         #[automatically_derived]
+                        #[allow(clippy::init_numbered_fields)]
                         #impl_decl {
                             type Int = #int_type;
 
