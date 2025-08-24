@@ -7,6 +7,7 @@ pub mod map;
 mod serde;
 pub mod set;
 
+use intid::IntegerId;
 pub use self::map::DirectIdMap;
 pub use self::set::DirectIdSet;
 use intid::uint::UnsignedPrimInt;
@@ -21,3 +22,17 @@ fn oom_id(id: impl UnsignedPrimInt) -> ! {
         intid::uint::debug_desc(id),
     )
 }
+
+/// Private trait used to
+trait IntegerIdExt: IntegerId {
+    /// Invokes [`Self::from_int_unchecked`] with a `usize` argument.
+    #[inline]
+    unsafe fn from_usize_unchecked(index: usize) -> Self {
+        Self::from_int_unchecked(intid::uint::from_usize_wrapping(index))
+    }
+    #[inline]
+    fn to_usize_checked(&self) -> Option<usize> {
+        intid::uint::to_usize_checked(self.to_int())
+    }
+}
+impl<K: IntegerId> IntegerIdExt for K {}
