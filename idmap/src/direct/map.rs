@@ -1,22 +1,76 @@
 //! Implements [`DirectIdMap`], a thin wrapper over a [`Vec<Option<T>>`].
 
-use crate::direct::oom_id;
+use crate::direct::{oom_id, IntegerIdExt};
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use intid::{EquivalentId, IntegerId};
+use crate::direct::raw_vec::RawVec;
 
-/// A map implemented as a [`Vec<Option<T>>`],
-/// which takes space proportional to the size of the maximum id.
+/// A map which is equivalent to a [`Vec<Option<T>>`],
+/// taking space proportional to the size of the maximum id.
 ///
 /// There is no entry API because the overhead of lookups is very small.
+///
+/// The implementation is slightly more efficient than a naive implementation of `Vec<Option<T>>`,
+/// avoiding bounds-checks and amortizing filling of the vector.
 #[derive(Clone)]
 pub struct DirectIdMap<K: IntegerId, V> {
-    // Optimization idea: If `Option<V>` does not support the nullable-pointer optimization,
-    // fallback to using a bitset + MaybeUninit.
-    // In some cases, this could save a significant amount of space.
+    /// Holds the allocated memory.
+    ///
+    ///
+    /// # Current Optimization
+    /// A bounds check is skipped by checking against `max_id_exclusive`.
+    ///
+    /// # Future Optimizations
+    /// Here is a list of potential optimizations:
+    ///
+    /// ## Use of `RawVec` to save 8 bytes of space
+    /// The `Vec::len` field is unnecessary., so we could save 8 bytes by using a `RawVec` type.
+    /// However, this would require a lot of additional `unsafe` code to save only 8 bytes of space.
+    /// We would need to ensure all the options in the uninitialized part are really initialized with `None`,
+    /// so that all the capacity is ready to actually use.
+    /// Speaking in terms of `Vec`, this would add an invariant that `len == capacity`.
+    /// Right now the `Vec::len` tracks this for us.
+    /// Another downside of this optimization is it would require `#[may_dangle]` to implement the Drop.
+    /// Since this requires nightly, certain types would encounter lifetime issues on stable.
+    ///
+    /// Were it not for the second alternative, this is the first optimization I would make,
+    /// since it is fairly profitable with no downsides outside of complexity and `unsafe` code.
+    /// Here is a gist with a draft of `RawVec` using `Vec` for the actual allocation:
+    /// <https://gist.github.com/Techcable/a06f74db0f62cf31521cf917ddaae78d>
+    ///
+    /// ## A Cleaner Alternative to `RawVec`
+    /// As an alternative that I just thought of while typing this,
+    /// we could use `Vec::len` to store `max_id_exclusive` while just using `unsafe` code
+    /// to ensure that the uninitialized capacity is really initialized with `None`.
+    /// This saves the 8 bytes of space, while avoiding both `RawVec` and `#[may_dangle]`.
+    ///
+    /// ## Bitset
+    /// If `Option<V>` does not support the nullable-pointer optimization,
+    /// fallback to using a bitset + MaybeUninit.
+    /// In some cases, this could save a significant amount of space.
+    ///
+    /// However, in order to be efficient, this would need to be done in a single allocation.
+    /// It would also need to be turned-off if `size_of<Option<V>> == size_of<V>`.
+    ///
+    /// ## Use of `T::Int` for `count` and `max_id_exclusive`
+    /// If `T::Int = u32`, this could reduce the storage used by 8-bytes.
+    /// If the 8-byte `max_id_exclusive` field is eliminated, this would not matter due to padding.
     values: Vec<Option<V>>,
-    len: usize,
+    count: usize,
+    /// One past the maximum id of all values currently in the map.
+    ///
+    /// This will be zero if the map is empty.
+    ///
+    /// WARNING: This cannot be done efficiently,
+    /// because on remove it will require a potentially `O(n)`
+    /// search through the existing memory.
+    ///
+    /// # Safety
+    /// This must always be `<= self.values.len()`,
+    /// because it is used to elide bounds checks.
+    max_id_exclusive: usize,
     marker: PhantomData<K>,
 }
 impl<K: IntegerId, V> Default for DirectIdMap<K, V> {
@@ -31,32 +85,48 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     pub const fn new() -> Self {
         DirectIdMap {
             values: Vec::new(),
-            len: 0,
+            count: 0,
+            max_id_exclusive: usize::MAX,
             marker: PhantomData,
         }
     }
+
     /// The number of entries in the map.
     #[inline]
     pub fn len(&self) -> usize {
-        self.len
+        self.count
     }
 
     /// Return true if this map is empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.len == 0
+        self.count == 0
+    }
+
+    /// Return the maximum id currently in the map.
+    ///
+    /// This is an `O(1)` operation, necessary to support efficient reverse iteration.
+    #[inline]
+    pub fn max_id(&self) -> Option<K> {
+        self.max_id_exclusive.checked_sub(1)
+            .map(|max_id_inclusive| {
+                // SAFETY: Maximum id is guaranteed to be present in map
+                unsafe { K::from_usize_unchecked(max_id_inclusive) }
+            })
     }
 
     /// Clear all entries in the map.
     #[inline]
     pub fn clear(&mut self) {
         self.values.clear();
-        self.len = 0;
+        self.count = 0;
+        self.max_id_exclusive = 0;
     }
 
     /// Trim unused capacity.
     pub fn shrink_to_fit(&mut self) {
         while matches!(self.values.last(), Some(None)) {
+            debug_assert!(self.max_id_exclusive < self.values.len());
             self.values.pop();
         }
         self.values.shrink_to_fit();
@@ -66,9 +136,17 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     #[inline]
     pub fn get(&self, id: impl EquivalentId<K>) -> Option<&V> {
         let id = id.as_id();
-        self.values
-            .get(intid::uint::to_usize_checked(id.to_int())?)?
-            .as_ref()
+        let index = id.to_usize_checked()?;
+        if index < self.max_id_exclusive {
+            // SAFETY: In bounds, because `max_id_exclusive <= Vec::len`
+            unsafe {
+                self.values
+                    .get_unchecked(index)
+                    .as_ref()
+            }
+        } else {
+            None
+        }
     }
 
     /// Get a mutable reference to the value associated with the specified key,
@@ -76,9 +154,17 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     #[inline]
     pub fn get_mut(&mut self, id: impl EquivalentId<K>) -> Option<&mut V> {
         let id = id.as_id();
-        self.values
-            .get_mut(intid::uint::to_usize_checked(id.to_int())?)?
-            .as_mut()
+        let index = id.to_usize_checked()?;
+        if index < self.max_id_exclusive {
+            // SAFETY: In bounds, because `max_id_exclusive <= Vec::len`
+            unsafe {
+                self.values
+                    .get_unchecked_mut(index)
+                    .as_mut()
+            }
+        } else {
+            None
+        }
     }
 
     /// Insert a key and a value, returning the previous value.
@@ -89,7 +175,7 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
         self.grow_to(id);
         let old_value = self.values[id].replace(value);
         if old_value.is_none() {
-            self.len += 1;
+            self.count += 1;
         }
         old_value
     }
@@ -105,7 +191,7 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
         }
         let old_value = self.values[id].take();
         if old_value.is_some() {
-            self.len -= 1;
+            self.count -= 1;
         }
         old_value
     }
@@ -135,7 +221,7 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     pub fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             marker: PhantomData,
-            len: self.len,
+            len: self.count,
             source: self.values.iter().enumerate(),
         }
     }
@@ -147,7 +233,7 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         IterMut {
             marker: PhantomData,
-            len: self.len,
+            len: self.count,
             source: self.values.iter_mut().enumerate(),
         }
     }
@@ -165,14 +251,20 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
             let key = unsafe { K::from_int_unchecked(intid::uint::from_usize_wrapping(index)) };
             if !func(key, entry.as_mut().unwrap()) {
                 *entry = None;
-                self.len -= 1;
+                self.count -= 1;
             }
         }
     }
+    /// Convert this into a `[Option<T>]` slice.
+    fn as_opt_slice(&mut self) -> Opt
+}
+#[cfg(feature = "nightly")]
+impl<#[maybe_drop] T> Drop for RawVec<> {
+
 }
 impl<K: IntegerId, V: PartialEq> PartialEq for DirectIdMap<K, V> {
     fn eq(&self, other: &Self) -> bool {
-        self.len == other.len && self.values == other.values
+        self.count == other.count && self.values == other.values
     }
 }
 impl<K: IntegerId, V: Eq> Eq for DirectIdMap<K, V> {}
@@ -244,7 +336,7 @@ impl<K: IntegerId, V> IntoIterator for DirectIdMap<K, V> {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         IntoIter {
-            len: self.len,
+            len: self.count,
             source: self.values.into_iter().enumerate(),
             marker: PhantomData,
         }
