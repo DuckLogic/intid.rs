@@ -93,6 +93,13 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
 
     /// Attempt to allocate a new id,
     /// returning an error if exhausted.
+    ///
+    /// # Errors
+    /// Once the number of allocated ids exceeds the range of the underlying
+    /// [`IntegerIdCounter`], then this function will return an error.
+    /// Since there is no way to free individual ids,
+    /// once this function returns an error it will never succeed again
+    /// unless [`Self::reset`] is called.
     #[inline]
     pub fn try_alloc(&self) -> Result<T, IdExhaustedError<T>> {
         // Effectively this is "fused" because T: IntegerIdCounter => T: IntegerIdContiguous,
@@ -143,6 +150,6 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
          *
          * This seems like a micro-optimization but it could become important at some point.
          */
-        self.next_id.store(T::START.to_int(), Ordering::Release)
+        self.next_id.store(T::START.to_int(), Ordering::Release);
     }
 }

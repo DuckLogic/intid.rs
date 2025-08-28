@@ -37,10 +37,12 @@ macro_rules! impl_primint {
                 <$target>::try_from(val).ok()
             }
             #[inline]
+            #[allow(clippy::cast_possible_truncation)] // desired functionality
             fn from_usize_wrapping(val: usize) -> Self {
                 val as $target
             }
             #[inline]
+            #[allow(clippy::cast_possible_truncation)] // desired functionality
             fn to_usize_wrapping(this: Self) -> usize {
                 this as usize
             }

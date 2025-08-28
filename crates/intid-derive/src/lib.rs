@@ -3,6 +3,7 @@
 //! Generally, you want to use the re-export from the `intid` or `idmap` crates.
 //! In the `intid` crate this requires explicitly enabling the `derive` feature.
 //! In the `idmap` crate, the derive feature is on by default.
+#![allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 
 use proc_macro2::{Ident, Span};
 use quote::{quote, quote_spanned};
@@ -360,8 +361,7 @@ fn parse_options(ast: &DeriveInput) -> syn::Result<MainOptions> {
     ast.attrs
         .iter()
         .find(|attr| attr.meta.path().is_ident("intid"))
-        .map(MainOptions::parse_attr)
-        .unwrap_or_else(|| Ok(MainOptions::default()))
+        .map_or_else(|| Ok(MainOptions::default()), MainOptions::parse_attr)
 }
 
 #[derive(Default, Debug)]

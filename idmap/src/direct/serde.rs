@@ -51,7 +51,7 @@ where
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(Some(self.len()))?;
-        for (k, v) in self.iter() {
+        for (k, v) in self {
             map.serialize_entry(&k, v)?;
         }
         map.end()
@@ -97,7 +97,7 @@ where
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(self.len()))?;
-        for value in self.iter() {
+        for value in self {
             seq.serialize_element(&value)?;
         }
         seq.end()

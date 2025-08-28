@@ -1,3 +1,5 @@
+use alloc::collections::BinaryHeap;
+
 use crate::{IdExhaustedError, UniqueIdAllocator};
 use intid::IntegerIdCounter;
 
@@ -17,14 +19,13 @@ use intid::IntegerIdCounter;
 /// it would be difficult to implement without any allocation.
 ///
 /// [idmap]: https://docs.rs/idmap/
-/// [`BinaryHeap`]: alloc::collections::BinaryHeap
 pub struct IdAllocator<T: IntegerIdCounter> {
     next_id: crate::UniqueIdAllocator<T>,
     /// Tracks freed ids for reuse, preferring smaller ids where possible
     ///
-    /// The use of a BinaryHeap here is inspired by the `thread-local` crate.
+    /// The use of a [`BinaryHeap`] here is inspired by the `thread-local` crate.
     /// No part of the implementation was copied.
-    heap: alloc::collections::BinaryHeap<core::cmp::Reverse<intid::OrderByInt<T>>>,
+    heap: BinaryHeap<core::cmp::Reverse<intid::OrderByInt<T>>>,
 }
 impl<T: IntegerIdCounter> Default for IdAllocator<T> {
     fn default() -> Self {
@@ -58,7 +59,10 @@ impl<T: IntegerIdCounter> IdAllocator<T> {
 
     /// Allocate a new id, reusing freed ids wherever possible.
     ///
-    /// Returns an error if no more ids are available.
+    /// # Errors
+    /// If no more ids are available, this will return an error.
+    /// This can only happen if the entire range of the [`IntegerIdCounter`]
+    /// has been , and none have been fred
     #[inline]
     pub fn try_alloc(&mut self) -> Result<T, IdExhaustedError<T>> {
         match self.heap.pop() {
@@ -69,7 +73,9 @@ impl<T: IntegerIdCounter> IdAllocator<T> {
 
     /// Allocate a new id, reusing freed ids wherever possible.
     ///
-    /// Panics if there are no ids available.
+    /// # Panics
+    /// If there are no ids available, this will panic.
+    /// See [`Self::try_alloc`] for a version that returns an error instead.
     #[track_caller]
     #[inline]
     #[must_use]

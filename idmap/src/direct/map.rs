@@ -162,16 +162,16 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     /// Iterate over the entries in the map,
     /// removing entries when the callback returns false.
     ///
-    /// See also [std::collections::HashMap::retain].
+    /// See also [`std::collections::HashMap::retain`].
     pub fn retain(&mut self, mut func: impl FnMut(K, &mut V) -> bool) {
         for (index, entry) in self.values.iter_mut().enumerate() {
-            if entry.is_none() {
+            let Some(ref mut entry_value) = entry else {
                 continue;
-            }
+            };
             // SAFETY: If entry exists, the key is guaranteed to be valid
             let key = unsafe { K::from_int_unchecked(intid::uint::from_usize_wrapping(index)) };
-            if !func(key, entry.as_mut().unwrap()) {
-                *entry = None;
+            if !func(key, entry_value) {
+                *entry = None; // gotta love NLL
                 self.len -= 1;
             }
         }

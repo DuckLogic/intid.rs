@@ -53,7 +53,9 @@ impl<T: IntegerIdCounter> UniqueIdAllocator<T> {
     /// Attempt to allocate a new id,
     /// panicking if none are available.
     ///
-    /// See [`Self::try_alloc`] for a version that returns an error
+    /// # Panics
+    /// This will panic when the range of the underlying [`IntegerIdCounter`] is exhausted.
+    /// See [`Self::try_alloc`] for a version that returns an error instead.
     #[inline]
     #[track_caller]
     pub fn alloc(&self) -> T {
@@ -65,6 +67,10 @@ impl<T: IntegerIdCounter> UniqueIdAllocator<T> {
 
     /// Attempt to allocate a new id,
     /// returning an error if there are no more available.
+    ///
+    /// # Errors
+    /// If the range of the underlying [`IntegerIdCounter`] is exhausted,
+    /// this will return an error.
     #[inline]
     pub fn try_alloc(&self) -> Result<T, IdExhaustedError<T>> {
         let old_id = self.next_id.get().ok_or_else(IdExhaustedError::new)?;
@@ -80,7 +86,7 @@ impl<T: IntegerIdCounter> UniqueIdAllocator<T> {
     /// Keep the allocator private if this behavior is undesired.
     #[inline]
     pub fn set_next_id(&self, next_id: T) {
-        self.next_id.set(Some(next_id))
+        self.next_id.set(Some(next_id));
     }
 
     /// Reset the allocator to a pristine state,

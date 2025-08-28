@@ -204,17 +204,17 @@ impl<T: IntegerId> PartialEq for OrderByInt<T> {
 impl<T: IntegerId> Hash for OrderByInt<T> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.to_int().hash(state)
+        self.0.to_int().hash(state);
     }
 }
 
 /// A type that can be for lookup as an [`IntegerId`].
 ///
-/// Used for key lookup in maps, similar to [core::borrow::Borrow] or [equivalent::Equivalent].
+/// Used for key lookup in maps, similar to [`core::borrow::Borrow`] or [`equivalent::Equivalent`].
 /// These traits are not suitable for id maps,
 /// which need conversion to integers rather than hashing/equality.
 ///
-/// [equivalent::Equivalent]: https://docs.rs/equivalent/latest/equivalent/trait.Equivalent.html
+/// [`equivalent::Equivalent`]: https://docs.rs/equivalent/latest/equivalent/trait.Equivalent.html
 pub trait EquivalentId<K: IntegerId> {
     /// Convert this type to an id `K`.
     fn as_id(&self) -> K;

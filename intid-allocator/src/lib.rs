@@ -37,6 +37,7 @@ impl<T: IntegerId> IdExhaustedError<T> {
     #[inline]
     #[cold]
     #[allow(clippy::new_without_default)] // doesn't make much sense for an error
+    #[must_use]
     pub fn new() -> Self {
         IdExhaustedError {
             marker: PhantomData,
@@ -46,6 +47,9 @@ impl<T: IntegerId> IdExhaustedError<T> {
     /// Trigger a descriptive panic due to this error.
     ///
     /// This gives a better panic message than calling [`Result::unwrap`].
+    ///
+    /// # Panics
+    /// Always.
     #[track_caller]
     #[cold]
     pub fn panic(self) -> ! {

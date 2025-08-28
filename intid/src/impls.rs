@@ -90,7 +90,8 @@ macro_rules! do_nonmax_impl {
             }
             #[inline]
             unsafe fn from_int_unchecked(id: Self::Int) -> Self {
-                nonmax::$target::new_unchecked(id)
+                // SAFETY: Guaranteed by caller
+                unsafe { nonmax::$target::new_unchecked(id) }
             }
             #[inline]
             fn to_int(self) -> Self::Int {

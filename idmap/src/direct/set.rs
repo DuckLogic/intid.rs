@@ -1,6 +1,10 @@
-//! Implements an `IdSet` using a bitset
+//! Implements an [`DirectIdSet`] using a bitset
 //!
-//! IdSets are to HashSets as IdMaps are to HashMaps
+//! An [`DirectIdSet`] is to a [`HashSet`] as a [`DirectIdMap`] is to a [`HashMap`].
+//!
+//! [`HashMap`]: std::collections::HashMap
+//! [`HashSet`]: std::collections::HashMap
+//! [`DirectIdMap`]: crate::direct::DirectIdMap
 
 use core::cmp::Ordering;
 use core::fmt::{self, Debug, Formatter};
@@ -13,7 +17,7 @@ use iter::FusedIterator;
 use fixedbitset::{FixedBitSet, Ones};
 use intid::{EquivalentId, IntegerId};
 
-/// A set whose members implement [IntegerId].
+/// A set whose members implement [`IntegerId`].
 ///
 /// This is implemented as a bitset,
 /// so memory is proportional to the highest integer index.
@@ -24,7 +28,7 @@ pub struct DirectIdSet<T: IntegerId> {
     marker: PhantomData<T>,
 }
 impl<T: IntegerId> DirectIdSet<T> {
-    /// Create a new [DirectIdSet] with no elements.
+    /// Create a new [`DirectIdSet`] with no elements.
     #[inline]
     pub const fn new() -> Self {
         DirectIdSet {
@@ -116,7 +120,7 @@ impl<T: IntegerId> DirectIdSet<T> {
 
     /// The number of entries in this set
     ///
-    /// An [DirectIdSet] internally tracks this length, so this is a `O(1)` operation
+    /// An [`DirectIdSet`] internally tracks this length, so this is a `O(1)` operation
     #[inline]
     pub fn len(&self) -> usize {
         self.len
@@ -185,7 +189,7 @@ impl<T: IntegerId> Debug for DirectIdSet<T> {
 impl<T: IntegerId> Extend<T> for DirectIdSet<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        for value in iter.into_iter() {
+        for value in iter {
             self.insert(value);
         }
     }
@@ -193,7 +197,7 @@ impl<T: IntegerId> Extend<T> for DirectIdSet<T> {
 impl<'a, T: IntegerId> Extend<&'a T> for DirectIdSet<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().copied())
+        self.extend(iter.into_iter().copied());
     }
 }
 impl<T: IntegerId> FromIterator<T> for DirectIdSet<T> {
@@ -261,8 +265,8 @@ impl<T: IntegerId> Index<T> for DirectIdSet<T> {
 impl<T: IntegerId + Hash> Hash for DirectIdSet<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_usize(self.len());
-        // guaranteed to be ordered key
-        for value in self.iter() {
+        // guaranteed to be ordered by key
+        for value in self {
             value.hash(state);
         }
     }
@@ -331,7 +335,7 @@ macro_rules! do_impl_iter {
         impl<T: IntegerId> FusedIterator for $target<$($lt,)* T> {}
     };
 }
-/// An iterator over the values in an [DirectIdSet].
+/// An iterator over the values in an [`DirectIdSet]`.
 ///
 /// TODO: Cannot implement `Clone` because [`fixedbitset::Ones`] doesn't support it yet.
 /// It was added in [PR #130], but no public release has been made yet.
