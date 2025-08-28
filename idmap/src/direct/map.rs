@@ -62,6 +62,12 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
         self.values.shrink_to_fit();
     }
 
+    /// Check if the specified key is present in the map.
+    #[inline]
+    pub fn contains_key(&self, id: impl EquivalentId<K>) -> bool {
+        self.get(id).is_some()
+    }
+
     /// Get the value associated with the specified key, or `None` if missing.
     #[inline]
     pub fn get(&self, id: impl EquivalentId<K>) -> Option<&V> {
