@@ -111,21 +111,6 @@ pub trait IntegerId: Copy + Eq + Debug + 'static {
     fn to_int(self) -> Self::Int;
 }
 
-/// The old name for [`IntegerIdContiguous`].
-///
-/// Will be removed in the full 0.3.0 release.
-#[deprecated(since = "0.3.0-beta.1", note = "Renamed to IntegerIdContiguous")]
-#[allow(missing_docs)] // deprecated
-pub trait ContiguousIntegerId: IntegerId {
-    const MIN_ID: Self;
-    const MAX_ID: Self;
-}
-#[allow(deprecated)]
-impl<T: IntegerIdContiguous> ContiguousIntegerId for T {
-    const MIN_ID: Self = <Self as IntegerIdContiguous>::MIN_ID;
-    const MAX_ID: Self = <Self as IntegerIdContiguous>::MIN_ID;
-}
-
 /// Indicates that an ida occupies contiguous range of contiguous values,
 /// between [`Self::MIN_ID`] and [`Self::MAX_ID`] inclusive.
 ///
