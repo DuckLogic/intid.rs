@@ -8,6 +8,7 @@ use core::hash::{Hash, Hasher};
 #[macro_use]
 mod macros;
 mod impls;
+pub mod trusted;
 pub mod uint;
 
 #[cfg(feature = "derive")]
@@ -84,6 +85,12 @@ pub trait IntegerId: Copy + Eq + Debug + 'static {
     ///
     /// This is necessary because trait methods cannot be marked `const`.
     const MAX_ID_INT: Self::Int;
+
+    /// Indicates that the type's implementation of [`IntegerId::to_int`] can trusted
+    /// to only return values in the range `MIN_ID_INT..=MAX_ID_INT`.
+    ///
+    /// This can be relied upon by unsafe code, since the token is `unsafe` to construct.
+    const TRUSTED_RANGE: Option<trusted::TrustedRangeToken<Self>> = None;
 
     /// Create an id from the underlying integer value,
     /// panicking if the value is invalid.

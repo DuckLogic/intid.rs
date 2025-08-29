@@ -190,6 +190,10 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                             const MAX_ID: Self = #name { #field_name: #field_type_as_id::MAX_ID };
                             const MIN_ID_INT: Self::Int = #field_type_as_id::MIN_ID_INT;
                             const MAX_ID_INT: Self::Int = #field_type_as_id::MIN_ID_INT;
+                            const TRUSTED_RANGE: Option<intid::trusted::TrustedRangeToken<Self>> = {
+                                // SAFETY: We simply delegate, so are valid if #field_type is
+                                unsafe { intid::trusted::TrustedRangeToken::assume_valid_if::<#field_type>() }
+                            };
 
                             #[inline]
                             fn from_int(int: #int_type) -> Self {

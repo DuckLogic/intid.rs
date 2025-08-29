@@ -8,6 +8,8 @@ macro_rules! impl_primint {
             const MAX_ID: Self = $target::MAX;
             const MIN_ID_INT: Self::Int = 0;
             const MAX_ID_INT: Self::Int = $target::MAX;
+            // SAFETY: Range is correct
+            const TRUSTED_RANGE: Option<crate::trusted::TrustedRangeToken<Self>> = unsafe { Some(crate::trusted::TrustedRangeToken::assume_valid()) };
             #[inline]
             fn from_int_checked(id: Self::Int) -> Option<Self> {
                 Some(id)
@@ -45,6 +47,8 @@ macro_rules! impl_nonzero_int {
             };
             const MIN_ID_INT: Self::Int = 1;
             const MAX_ID_INT: Self::Int = $int::MAX;
+            // SAFETY: Range is correct
+            const TRUSTED_RANGE: Option<crate::trusted::TrustedRangeToken<Self>> = unsafe { Some(crate::trusted::TrustedRangeToken::assume_valid()) };
 
             #[inline]
             fn from_int_checked(id: Self::Int) -> Option<Self> {
@@ -89,6 +93,8 @@ macro_rules! do_nonmax_impl {
             const MAX_ID: Self = nonmax::$target::MAX;
             const MIN_ID_INT: Self::Int = 0;
             const MAX_ID_INT: Self::Int = nonmax::$target::MAX.get();
+            // SAFETY: Range is correct
+            const TRUSTED_RANGE: Option<crate::trusted::TrustedRangeToken<Self>> = unsafe { Some(crate::trusted::TrustedRangeToken::assume_valid()) };
 
             #[inline]
             fn from_int_checked(id: Self::Int) -> Option<Self> {
