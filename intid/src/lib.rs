@@ -5,8 +5,9 @@ use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 
-mod impls;
+#[macro_use]
 mod macros;
+mod impls;
 pub mod uint;
 
 #[cfg(feature = "derive")]
