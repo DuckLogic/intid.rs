@@ -10,22 +10,25 @@ env:
   #
   # the ci is free so we might as well use it ;)
   CARGO_INCREMENTAL: 0
-  # apparently we can't reference the env.{..} fields from inside the matrix
-  # the & creates an evil yaml alias thing instead
-  # TODO: Use `outputs` + a python script or something
-
-  # TODO: We cannot use --all-features because some crates have a 'nightly' feature
-  # We use this as a workaround
-  CI_ALL_FEATURES: &ci_all_features "intid/__ci_all intid-allocator/__ci_all idmap/__ci_all intid-derive/__ci_all"
-  # Enable all features and also the nightly features
-  CI_NIGHTLY_FEATURES: &ci_nightly_features "intid/__ci_all intid-allocator/__ci_all idmap/__ci_all intid-derive/__ci_all idmap/nightly"
 
 
 
 jobs:
+  shared-config:
+    outputs:
+      # TODO: We cannot use --all-features because some crates have a 'nightly' feature
+      # We use this as a workaround
+      all_features: "intid/__ci_all intid-allocator/__ci_all idmap/__ci_all intid-derive/__ci_all"
+      # Enable all features and also the nightly features
+      nightly_features: "idmap/nightly"
+    runs-on: ubuntu-latest
+    steps:
+      # dummy action
+      - uses: actions/checkout@v5
   test:
     # Only run on PRs if the source branch is on someone else's repo
     if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
+    needs: shared-config
 
     runs-on: ubuntu-latest
     strategy:
@@ -53,10 +56,10 @@ jobs:
         # NOTE: Features to test must be specified manually. They are applied to all versions separately.
         features:
           - "" # no features
-          - *ci_all_features # all features
+          - ${{ needs.shared-config.outputs.all_features }} # all features
         include:
           - rust: nightly
-            features: *ci_nightly_features
+            features: ${{ needs.shared-config.outputs.all_features }} ${{ needs.shared-config.outputs.nightly_features }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@master
@@ -81,6 +84,7 @@ jobs:
   clippy:
     # Only run on PRs if the source branch is on someone else's repo
     if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
+    needs: shared-config
 
     runs-on: ubuntu-latest
     strategy:
@@ -93,11 +97,11 @@ jobs:
           - stable
           - nightly
         features:
-          - "" # no features
-          - *ci_all_features
+          - ""
+          - ${{ needs.shared-config.outputs.all_features }}
         include:
           - rust: nightly
-            features: *ci_nightly_features
+            features: ${{ needs.shared-config.outputs.all_features }} ${{ needs.shared-config.outputs.nightly_features }}
 
     steps:
       - uses: actions/checkout@v5
@@ -117,7 +121,7 @@ jobs:
   docs:
     # Only run on PRs if the source branch is on someone else's repo
     if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
-
+    needs: shared-config
     runs-on: ubuntu-latest
     env:
       RUSTDOCFLAGS: "-D warnings"
@@ -129,10 +133,10 @@ jobs:
           - nightly
         features:
           # cannot run with --no-default-features since that breaks doc-links
-          - *ci_all_features
+          - ${{ needs.shared-config.outputs.all_features }}
         include:
           - rust: nightly
-            features: *ci_nightly_features
+            features: ${{ needs.shared-config.outputs.all_features }} ${{ needs.shared-config.outputs.nightly_features }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@master
