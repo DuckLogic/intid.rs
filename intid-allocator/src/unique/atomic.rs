@@ -1,14 +1,29 @@
 use crate::IdExhaustedError;
 #[allow(unused_imports)] // used by docs
-use crate::UniqueIdAllocator;
+use crate::{IntegerId, UniqueIdAllocator};
 use core::marker::PhantomData;
 use core::sync::atomic::Ordering;
 use intid::{uint, IntegerIdCounter};
 
-/// Allocates unique integer ids across multiple threads.
+/// Allocates unique integer ids atomically,
+/// in a way safe to use from multiple threads.
 ///
-/// This is an [`UniqueIdAllocator`] that uses atomic instructions,
-/// and so is safe to share across threads.
+/// # Thread Safety
+/// This type makes the following guarantees about allocations:
+/// - Absent a call to [`Self::reset`], each call to [`Self::alloc`] returns a new value.
+///   Consequently, if only a single allocator is used, all the ids will be unique.
+/// - All available ids will be used before an [`IdExhaustedError`] is returned.
+///   Equivalently, allocation will never skip over ids (although it may appear to from the perspective of a single thread).
+/// - Once an [`IdExhaustedError`] is returned, all future allocations will fail unless [`Self::reset`] is called.
+///   This is similar to the guarantees of [`Iterator::fuse`].
+///
+/// This type only makes guarantees about atomicity, not about synchronization with other operations.
+/// In other words, without a [`core::sync::atomic::fence`],
+/// there are no guarantees about the relative-ordering between this counter and other memory locations.
+/// It is not meant to be used as a synchronization primitive; It is only meant to allocate unique ids.
+///
+/// An incorrect implementation of [`IntegerId`] or [`IntegerIdCounter`] can break some or all of these guarantees,
+/// but will not be able to trigger undefined behavior.
 #[derive(Debug)]
 pub struct UniqueIdAllocatorAtomic<T: IntegerIdCounter> {
     // This could be improved by adding a T: bytemuck::NoUninit bound to IntegerIdCounter
@@ -76,13 +91,8 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
     /// Estimate the maximum currently used id,
     /// or `None` if no ids have been allocated yet.
     ///
-    /// Unlike [`UniqueIdAllocator::max_used_id`]
-    /// this is only an approximation.
-    /// This is because other threads may be concurrently allocating a new id,
-    /// and the load uses a [relaxed](core::sync::atomic::Ordering) ordering.
-    /// In the current implementation, this should always be an under-estimate,
-    /// since the counter only goes upwards.
-    /// However, this should not be relied upon.
+    /// Unlike [`UniqueIdAllocator::max_used_id`], this is only an approximation.
+    /// This is because other threads may be concurrently allocating a new id.
     #[inline]
     pub fn approx_max_used_id(&self) -> Option<T> {
         IntegerIdCounter::checked_sub(
@@ -91,23 +101,28 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
         )
     }
 
-    /// Attempt to allocate a new id,
-    /// returning an error if exhausted.
+    /// Attempt to allocate a new id, returning an error if exhausted.
+    ///
+    /// This operation is guaranteed to be atomic,
+    /// and will never reuse ids unless [`Self::reset`] is called.
+    /// However, it should not be used as a tool for synchronization.
+    /// See type-level docs for more details.
     ///
     /// # Errors
     /// Once the number of allocated ids exceeds the range of the underlying
     /// [`IntegerIdCounter`], then this function will return an error.
-    /// Since there is no way to free individual ids,
-    /// once this function returns an error it will never succeed again
-    /// unless [`Self::reset`] is called.
+    /// This function will never skip over valid ids,
+    /// so the error can only occur if all ids have ben used.
     #[inline]
     pub fn try_alloc(&self) -> Result<T, IdExhaustedError<T>> {
         // Effectively this is "fused" because T: IntegerIdCounter => T: IntegerIdContiguous,
         // so once addition overflows all future calls will error
         //
         // See the comment in the Self::reset call for a way to potentially eliminate the CAS loop.
+        //
+        // Safe to used relaxed ordering because we only guarantee atomicity, not synchronization
         self.next_id
-            .fetch_update(Ordering::AcqRel, Ordering::Relaxed, |x| {
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |x| {
                 uint::checked_add(x, uint::one())
             })
             .ok()
@@ -115,8 +130,15 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
             .ok_or_else(IdExhaustedError::new)
     }
 
-    /// Attempt to allocate a new id,
-    /// panicking if exhausted.
+    /// Attempt to allocate a new id, panicking if exhausted.
+    ///
+    /// This operation is guaranteed to be atomic,
+    /// and will never reuse ids unless [`Self::reset`] is called.
+    /// However, it should not be used as a tool for synchronization.
+    /// See type-level docs for more details.
+    ///
+    /// # Panics
+    /// Panics if ids are exhausted, when [`Self::try_alloc`] would have returned an error.
     #[inline]
     #[must_use]
     pub fn alloc(&self) -> T {
@@ -150,6 +172,6 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
          *
          * This seems like a micro-optimization but it could become important at some point.
          */
-        self.next_id.store(T::START.to_int(), Ordering::Release);
+        self.next_id.store(T::START.to_int(), Ordering::Relaxed);
     }
 }
