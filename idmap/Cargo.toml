@@ -9,7 +9,7 @@ readme = "README.md"
 license.workspace = true
 rust-version.workspace = true
 categories = ["data-structures", "rust-patterns"]
-keywords = ["idmap", "lookup table", "table", "id"]
+keywords = ["idmap", "table", "id", "array", "map"]
 
 [features]
 nightly = []

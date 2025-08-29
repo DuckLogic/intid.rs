@@ -9,7 +9,7 @@ readme.workspace = true
 license.workspace = true
 rust-version.workspace = true
 categories = ["no-std", "no-std::no-alloc", "rust-patterns"]
-keywords = ["enum", "derive", "intid", "idmap", "lookup table"]
+keywords = ["enum", "derive", "intid", "idmap", "table"]
 
 [lib]
 proc-macro = true

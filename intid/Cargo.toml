@@ -9,7 +9,7 @@ readme.workspace = true
 license.workspace = true
 rust-version.workspace = true
 categories = ["no-std::no-alloc", "no-std", "rust-patterns", "data-structures"]
-keywords = ["intid", "id", "counter", "idmap", "integer traits"]
+keywords = ["intid", "id", "counter", "idmap", "integer"]
 
 [dependencies]
 intid-derive = { workspace = true, optional = true }

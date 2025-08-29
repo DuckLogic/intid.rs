@@ -16,10 +16,11 @@ categories = [
     "memory-management",
 ]
 keywords = [
-    "id allocator",
+    "allocator",
     "counter",
-    "id tracker",
-    "lookup table"
+    "tracker",
+    "table",
+    "atomic",
 ]
 
 [dependencies]
