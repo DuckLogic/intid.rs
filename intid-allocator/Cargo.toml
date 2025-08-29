@@ -16,8 +16,8 @@ bytemuck = { version = "1", optional = true }
 rustversion = "1"
 
 [features]
-default = ["alloc", "atomic"]
-std = []
+default = ["std", "atomic"]
+std = ["alloc"]
 alloc = []
 atomic = [
     "dep:atomic",
