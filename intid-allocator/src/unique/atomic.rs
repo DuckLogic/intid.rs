@@ -97,6 +97,8 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
     pub fn try_alloc(&self) -> Result<T, IdExhaustedError<T>> {
         // Effectively this is "fused" because T: IntegerIdCounter => T: IntegerIdContiguous,
         // so once addition overflows all future calls will error
+        //
+        // See the comment in the Self::reset call for a way to potentially eliminate the CAS loop.
         self.next_id
             .fetch_update(Ordering::AcqRel, Ordering::Relaxed, |x| {
                 uint::checked_add(x, uint::one())
@@ -115,5 +117,32 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
             Ok(x) => x,
             Err(e) => e.panic(),
         }
+    }
+
+    /// Reset the allocator to a pristine state,
+    /// beginning allocations all over again.
+    ///
+    /// This is equivalent to running `*allocator = UniqueIdAllocatorAtomic::new()`,
+    /// but is done atomically and does not require a `&mut Self` reference.
+    ///
+    /// This may cause unexpected behavior if ids are expected to be monotonically increasing,
+    /// or if the new ids conflict with ones still in use.
+    /// To avoid this, keep the id allocator private.
+    ///
+    /// There is no counterpart [`UniqueIdAllocator::set_next_id`],
+    /// because the ability to force the counter to jump forwards
+    /// could prevent future optimizations.
+    #[inline]
+    pub fn reset(&self) {
+        /*
+         * I said this might prevent future optimizations.
+         * What I am referring to is the potential to convert the CAS loop
+         * into a fetch_add similar to how Arc::clone does.
+         * Based on the assumption there are fewer than isize::MAX threads,
+         * Arc::clone only has to worry about overflow if the counter exceeds that value.
+         *
+         * This seems like a micro-optimization but it could become important at some point.
+         */
+        self.next_id.store(T::START.to_int(), Ordering::Release)
     }
 }

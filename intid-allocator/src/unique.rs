@@ -41,6 +41,8 @@ impl<T: IntegerIdCounter> UniqueIdAllocator<T> {
 
     /// Create a new allocator,
     /// using the specified value as the first id.
+    ///
+    /// Equivalent to calling [`Self::new`] then [`Self::set_next_id`] in sequence.
     #[inline]
     pub const fn with_start(start: T) -> Self {
         UniqueIdAllocator {
@@ -71,10 +73,30 @@ impl<T: IntegerIdCounter> UniqueIdAllocator<T> {
         Ok(old_id)
     }
 
+    /// Set the id that will be returned from the [`Self::alloc`] function.
+    ///
+    /// Like a call to [`Self::reset`], this may cause the counter to unexpectedly jump backwards.
+    /// It may also cause the counter to jump unexpectedly forwards.
+    /// Keep the allocator private if this behavior is undesired.
+    #[inline]
+    pub fn set_next_id(&self, next_id: T) {
+        self.next_id.set(Some(next_id))
+    }
+
     /// Reset the allocator to a pristine state,
     /// beginning allocations all over again.
+    ///
+    /// This is equivalent to running `*allocator = UniqueIdAllocator::new()`,
+    /// but does not require a `&mut Self` reference.
+    ///
+    /// This may cause unexpected behavior if ids are expected to be monotonically increasing,
+    /// or if the new ids conflict with ones still in use.
+    /// To avoid this, keep the id allocator private.
+    ///
+    /// See also the [`Self::set_next_id`] function,
+    /// which can cause the counter to jump forwards in addition to jumping backwards.
     #[inline]
-    pub fn reset(&mut self) {
-        self.next_id.set(Some(T::START))
+    pub fn reset(&self) {
+        self.set_next_id(T::START);
     }
 }
