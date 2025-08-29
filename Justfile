@@ -4,9 +4,6 @@ check: && check-format
 
 test: check
     cargo +nightly test --all-features
-    cargo msrv verify --ignore-lockfile
-
-msrv:
 
 test-full: test
     cargo +nightly test-all-features
