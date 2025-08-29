@@ -57,7 +57,7 @@ pub use uint::UnsignedPrimInt;
 /// The requirement for correctness in this case also apply to all sub-traits in this crate,
 /// including [`IntegerIdContiguous`] and [`IntegerIdCounter`].
 /// So an unsafe implementation of `from_int_unchecked` can be similarly trusted to accept
-/// all integer values between [`IntegerIdContiguous::MIN_ID`] and [`IntegerIdContiguous::MAX_ID`].
+/// all integer values between [`IntegerId::MIN_ID`] and [`IntegerId::MAX_ID`].
 ///
 /// This restriction allows avoiding unnecessary checks when ids are stored to/from another data structure.
 /// Despite this requirement, I still consider this trait safe to implement,
@@ -71,6 +71,18 @@ pub trait IntegerId: Copy + Eq + Debug + 'static {
     /// Every valid instance of `Self` should correspond to a valid `Self::Int`.
     /// However, the other direction may not always be true.
     type Int: uint::UnsignedPrimInt;
+    /// The value of this type with the smallest integer value.
+    const MIN_ID: Self;
+    /// The value of this type with the largest integer value.
+    const MAX_ID: Self;
+    /// The value of [`Self::MIN_ID`] a primitive integer.
+    ///
+    /// This is necessary because trait methods cannot be marked `const`.
+    const MIN_ID_INT: Self::Int;
+    /// The value of [`Self::MAX_ID`] a primitive integer.
+    ///
+    /// This is necessary because trait methods cannot be marked `const`.
+    const MAX_ID_INT: Self::Int;
 
     /// Create an id from the underlying integer value,
     /// panicking if the value is invalid.
@@ -111,8 +123,8 @@ pub trait IntegerId: Copy + Eq + Debug + 'static {
     fn to_int(self) -> Self::Int;
 }
 
-/// Indicates that an ida occupies contiguous range of contiguous values,
-/// between [`Self::MIN_ID`] and [`Self::MAX_ID`] inclusive.
+/// Indicates that an id occupies contiguous range of contiguous values,
+/// and all values between [`IntegerId::MIN_ID`] and [`IntegerId::MAX_ID`] are valid.
 ///
 /// This is similar to [`bytemuck::Contiguous`].
 /// However, since it is safe to implement,
@@ -123,14 +135,9 @@ pub trait IntegerId: Copy + Eq + Debug + 'static {
 ///
 /// However, if [`Self::from_int_unchecked`](IntegerId::from_int_unchecked) makes unsafe assumptions (satisfying the condition set forth in the [`IntegerId`] safety docs),
 /// then this trait must also be implemented correctly.
-/// More specifically, all integers between [`Self::MIN_ID`] and [`Self::MAX_ID`] must be valid
+/// More specifically, all integers between [`IntegerId::MIN_ID`] and [`IntegerId::MAX_ID`] must be valid
 /// and cannot fail when passed to [`IntegerId::from_int_checked`].
-pub trait IntegerIdContiguous: IntegerId {
-    /// The value of this type with the smallest integer value.
-    const MIN_ID: Self;
-    /// The value of this type with the largest integer value.
-    const MAX_ID: Self;
-}
+pub trait IntegerIdContiguous: IntegerId {}
 
 /// An [`IntegerId`] that can be sensibly used as a counter,
 /// starting at a [`Self::START`] value and being incremented from there.
@@ -141,11 +148,10 @@ pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
     /// Where a counter a should start from.
     ///
     /// This should be the [`Default`] value if one is defined.
+    /// It is usually equal to the [`IntegerId::MIN_ID`],
+    /// but this is not required.
     const START: Self;
-    /// Where a counter a should start from.
-    ///
-    /// This should just be the value of [`Self::START`] as a [`T::Int`](IntegerId::Int).
-    /// If not, unexpected behavior can occur (but no UB by itself).
+    /// The value of [`Self::START`] as a [`T::Int`](IntegerId::Int).
     ///
     /// This is necessary because trait methods ([`IntegerId::to_int`])
     /// can not currently be const methods.

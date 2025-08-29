@@ -23,10 +23,7 @@ macro_rules! define_newtype_counter {
             $(#[$ty_attr])*
             $vis struct $name($(#[$field_attr])* $inner_vis $inner);
         }
-        impl $crate::IntegerIdContiguous for $name {
-            const MIN_ID: Self = $name(<$inner as $crate::IntegerIdContiguous>::MIN_ID);
-            const MAX_ID: Self = $name(<$inner as $crate::IntegerIdContiguous>::MAX_ID);
-        }
+        impl $crate::IntegerIdContiguous for $name {}
         impl $crate::IntegerIdCounter for $name {
             const START: Self = $name(<$inner as $crate::IntegerIdCounter>::START);
             const START_INT: Self::Int = <$inner as $crate::IntegerIdCounter>::START_INT;
@@ -63,6 +60,10 @@ macro_rules! define_newtype_id {
         $vis struct $name($(#[$field_attr])* $inner_vis $inner);
         impl $crate::IntegerId for $name {
             type Int = <$inner as intid::IntegerId>::Int;
+            const MIN_ID: Self = $name(<$inner as $crate::IntegerId>::MIN_ID);
+            const MAX_ID: Self = $name(<$inner as $crate::IntegerId>::MAX_ID);
+            const MIN_ID_INT: Self::Int = <$inner as $crate::IntegerId>::MIN_ID;
+            const MAX_ID_INT: Self::Int = <$inner as $crate::IntegerId>::MAX_ID_INT;
             #[inline]
             fn from_int(id: Self::Int) -> Self {
                 $name(<$inner as $crate::IntegerId>::from_int(id))

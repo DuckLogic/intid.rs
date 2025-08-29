@@ -29,23 +29,20 @@ fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
     let name = &ast.ident;
     let data = ensure_only_struct(&ast.data, TRAIT_NAME)?;
     let NewtypeStructInfo {
-        field_name,
+        field_name: _,
         field_type,
     } = ensure_newtype_struct(&ast.ident, data, TRAIT_NAME)?;
-    let field_type_as_contig = quote_spanned! {
-        field_type.span() => <#field_type as intid::IntegerIdContiguous>
-    };
+    let require_contig = quote_spanned!(field_type.span() => {
+        fn require_contig<T: intid::IntegerIdContiguous>() {}
+        let _ = require_contig::<#field_type>;
+    });
     Ok(quote! {
+        const _: () = {
+            #require_contig
+        };
         #[automatically_derived]
         #[allow(clippy::init_numbered_fields)]
-        impl intid::IntegerIdContiguous for #name {
-            const MIN_ID: Self = #name {
-                #field_name: #field_type_as_contig::MIN_ID,
-            };
-            const MAX_ID: Self = #name {
-                #field_name: #field_type_as_contig::MAX_ID,
-            };
-        }
+        impl intid::IntegerIdContiguous for #name {}
     })
 }
 
@@ -74,10 +71,7 @@ fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
 /// #[derive(IntegerId, IntegerIdCounter)]
 /// #[intid(counter(skip_contiguous))]
 /// struct Explicit(u32);
-/// impl intid::IntegerIdContiguous for Explicit {
-///     const MIN_ID: Self = Explicit(0);
-///     const MAX_ID: Self = Explicit(u32::MAX);
-/// }
+/// impl intid::IntegerIdContiguous for Explicit {}
 /// ```
 #[proc_macro_derive(IntegerIdCounter, attributes(intid))]
 pub fn integer_id_counter(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -192,6 +186,10 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                         #[allow(clippy::init_numbered_fields)]
                         #impl_decl {
                             type Int = #int_type;
+                            const MIN_ID: Self = #name { #field_name: #field_type_as_id::MIN_ID };
+                            const MAX_ID: Self = #name { #field_name: #field_type_as_id::MAX_ID };
+                            const MIN_ID_INT: Self::Int = #field_type_as_id::MIN_ID_INT;
+                            const MAX_ID_INT: Self::Int = #field_type_as_id::MIN_ID_INT;
 
                             #[inline]
                             fn from_int(int: #int_type) -> Self {
@@ -230,6 +228,9 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
             let mut idx = 0;
             let mut variant_matches = Vec::new();
             let mut errors = Vec::new();
+            if data.variants.is_empty() {
+                return Err(syn::Error::new(Span::call_site(), "Enum must be inhabited"));
+            }
             for variant in &data.variants {
                 let ident = &variant.ident;
                 match variant.fields {
@@ -261,20 +262,55 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                 variant_matches.push(quote!(#idx => #name::#ident));
                 idx += 1;
             }
+            // TODO: Dont assume that the enum fits in an usize
+            let int_type = quote!(usize);
             let mut errors = errors.into_iter();
+            let select_method = |cmp: TokenStream| {
+                quote! {
+                    const fn select(
+                        a: #name,
+                        b: #name,
+                    ) -> #name {
+                        if (a as #int_type) #cmp (b as #int_type) {
+                            a
+                        } else if (b as #int_type) #cmp (a as #int_type) {
+                            b
+                        } else {
+                            panic!("internal error: detected conflicting enum ids")
+                        }
+                    }
+                }
+            };
+            let do_select = data
+                .variants
+                .iter()
+                .map(|x| quote!(#name::#x))
+                .reduce(|a, b| quote!(select(#a, #b)))
+                .unwrap();
+            let select_max = select_method(quote!(>));
+            let select_min = select_method(quote!(<));
             if let Some(mut error) = errors.next() {
                 for other in errors {
                     error.combine(other);
                 }
                 Err(error)
             } else {
-                // TODO: Dont assume that the repr fits in an usize
                 Ok(quote! {
                     impl intid::IntegerId for #name {
-                        type Int = usize;
+                        type Int = #int_type;
+                        const MAX_ID: Self = {
+                            #select_max
+                            #do_select
+                        };
+                        const MIN_ID: Self = {
+                            #select_min
+                            #do_select
+                        };
+                        const MAX_ID_INT: #int_type = Self::MAX_ID as #int_type;
+                        const MIN_ID_INT: #int_type = Self::MIN_ID as #int_type;
 
                         #[inline]
-                        fn from_int_checked(x: usize) -> Option<Self> {
+                        fn from_int_checked(x: #int_type) -> Option<Self> {
                             Some(match x {
                                 #(#variant_matches,)*
                                 _ => return None,
@@ -282,7 +318,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                         }
 
                         #[inline]
-                        unsafe fn from_int_unchecked(x: usize) -> Self {
+                        unsafe fn from_int_unchecked(x: #int_type) -> Self {
                             match x {
                                 #(#variant_matches,)*
                                 _ => {

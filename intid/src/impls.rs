@@ -4,6 +4,10 @@ macro_rules! impl_primint {
     ($($target:ident),*) => {$(
         impl crate::IntegerId for $target {
             type Int = $target;
+            const MIN_ID: Self = 0;
+            const MAX_ID: Self = $target::MAX;
+            const MIN_ID_INT: Self::Int = 0;
+            const MAX_ID_INT: Self::Int = $target::MAX;
             #[inline]
             fn from_int_checked(id: Self::Int) -> Option<Self> {
                 Some(id)
@@ -13,10 +17,7 @@ macro_rules! impl_primint {
                 self
             }
         }
-        impl crate::IntegerIdContiguous for $target {
-            const MIN_ID: Self = 0;
-            const MAX_ID: Self = $target::MAX;
-        }
+        impl crate::IntegerIdContiguous for $target {}
         impl crate::IntegerIdCounter for $target {
             const START: Self = 0;
             const START_INT: Self = 0;
@@ -29,6 +30,21 @@ macro_rules! impl_nonzero_int {
     ($($target:ident => $int:ident),*) => {$(
         impl crate::IntegerId for core::num::$target {
             type Int = $int;
+            const MIN_ID: Self = {
+                // while using NonZero::MIN might be nice, that requires rust 1.70
+                // SAFETY: One is not zero
+                unsafe {
+                    core::num::$target::new_unchecked(1)
+                }
+            };
+            const MAX_ID: Self = {
+                // SAFETY: Maximum is not zero
+                unsafe {
+                    core::num::$target::new_unchecked($int::MAX)
+                }
+            };
+            const MIN_ID_INT: Self::Int = 1;
+            const MAX_ID_INT: Self::Int = $int::MAX;
 
             #[inline]
             fn from_int_checked(id: Self::Int) -> Option<Self> {
@@ -48,23 +64,9 @@ macro_rules! impl_nonzero_int {
                 self.get()
             }
         }
-        impl crate::IntegerIdContiguous for core::num::$target {
-            const MIN_ID: Self = {
-                // while using NonZero::MIN might be nice, that requires rust 1.70
-                // SAFETY: One is not zero
-                unsafe {
-                    core::num::$target::new_unchecked(1)
-                }
-            };
-            const MAX_ID: Self = {
-                // SAFETY: Maximum is not zero
-                unsafe {
-                    core::num::$target::new_unchecked($int::MAX)
-                }
-            };
-        }
+        impl crate::IntegerIdContiguous for core::num::$target {}
         impl crate::IntegerIdCounter for core::num::$target {
-            const START: Self = <Self as crate::IntegerIdContiguous>::MIN_ID;
+            const START: Self = <Self as crate::IntegerId>::MIN_ID;
             const START_INT: $int = Self::START.get();
         }
     )*}
@@ -83,6 +85,10 @@ macro_rules! do_nonmax_impl {
     ($($target:ident => $int:ident),*) => {$(
         impl crate::IntegerId for nonmax::$target {
             type Int = $int;
+            const MIN_ID: Self = nonmax::$target::ZERO;
+            const MAX_ID: Self = nonmax::$target::MAX;
+            const MIN_ID_INT: Self::Int = 0;
+            const MAX_ID_INT: Self::Int = nonmax::$target::MAX.get();
 
             #[inline]
             fn from_int_checked(id: Self::Int) -> Option<Self> {
@@ -99,8 +105,6 @@ macro_rules! do_nonmax_impl {
             }
         }
         impl crate::IntegerIdContiguous for nonmax::$target {
-            const MIN_ID: Self = nonmax::$target::ZERO;
-            const MAX_ID: Self = nonmax::$target::MAX;
         }
         impl crate::IntegerIdCounter for nonmax::$target {
             const START: Self = nonmax::$target::ZERO;
