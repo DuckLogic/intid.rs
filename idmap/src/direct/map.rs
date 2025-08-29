@@ -1,6 +1,7 @@
 //! Implements [`DirectIdMap`], a thin wrapper over a [`Vec<Option<T>>`].
 
 use crate::direct::oom_id;
+use alloc::vec::Vec;
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
