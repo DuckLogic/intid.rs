@@ -18,7 +18,8 @@ jobs:
     outputs:
       # TODO: We cannot use --all-features because some crates have a 'nightly' feature
       # We use this as a workaround
-      all_features: "intid/__ci_all intid-allocator/__ci_all idmap/__ci_all intid-derive/__ci_all"
+      # The question mark after intid-derive fixes ambiguity in Rust 1.65
+      all_features: "intid/__ci_all intid-allocator/__ci_all idmap/__ci_all intid-derive?/__ci_all"
       # Enable all features and also the nightly features
       nightly_features: "idmap/nightly"
     runs-on: ubuntu-latest
