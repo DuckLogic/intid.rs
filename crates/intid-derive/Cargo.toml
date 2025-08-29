@@ -22,5 +22,9 @@ proc-macro2 = "1"
 [dev-dependencies]
 intid = { workspace = true, features = ["derive"] }
 
+[features]
+# doesn't do anything but added for completeness
+__ci_all = []
+
 [lints]
 workspace = true

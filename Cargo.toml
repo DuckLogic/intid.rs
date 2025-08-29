@@ -9,6 +9,8 @@ license = "MIT OR Apache-2.0"
 # 1.64 - workspace.package
 # 1.65 - GAT
 # 1.68 - sparse index
+#
+# if changed, keep in sync with CI
 rust-version = "1.65"
 edition = "2021"
 
@@ -18,8 +20,8 @@ members = ["intid", "idmap", "intid-allocator", "crates/*"]
 
 [workspace.dependencies]
 # crate dependencies
-intid-derive = { path  = "crates/intid-derive", version = "0.3.0-beta.1" }
-intid = { path  = "intid", version = "0.3.0-beta.1" }
+intid-derive = { path  = "crates/intid-derive", version = "0.3.0-beta.3" }
+intid = { path  = "intid", version = "0.3.0-beta.3" }
 
 [workspace.lints.rust]
 missing-docs = "deny"

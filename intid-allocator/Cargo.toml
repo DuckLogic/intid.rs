@@ -43,6 +43,7 @@ atomic = [
     "bytemuck/align_offset",
     "bytemuck/track_caller",
 ]
+__ci_all = ["std", "atomic"]
 
 [lints]
 workspace = true
