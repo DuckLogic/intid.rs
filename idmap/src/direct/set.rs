@@ -52,7 +52,11 @@ impl<T: IntegerId> DirectIdSet<T> {
     }
 
     /// Inserts the specified element into the set,
-    /// returning `true` if it was already in the set and `false` if it wasn't.
+    /// returning `true` if it was newly added and `false` if it was already present.
+    ///
+    /// Return value is consistent with [`HashSet::insert`].
+    ///
+    /// [`HashSet::insert`]: std::collections::HashSet::insert
     #[inline]
     pub fn insert(&mut self, value: T) -> bool {
         let value = value.to_int();
@@ -63,11 +67,15 @@ impl<T: IntegerId> DirectIdSet<T> {
         if !was_present {
             self.len += 1;
         }
-        was_present
+        !was_present
     }
 
     /// Remove the specified value from the set,
     /// returning whether it was previously present.
+    ///
+    /// Return value is consistent with [`HashSet::remove`].
+    ///
+    /// [`HashSet::remove`]: std::collections::HashSet::insert
     #[inline]
     pub fn remove(&mut self, value: impl EquivalentId<T>) -> bool {
         let value = value.as_id().to_int();
@@ -363,7 +371,7 @@ do_impl_iter!(IntoIter);
 impl<T: IntegerId> petgraph_0_8::visit::VisitMap<T> for DirectIdSet<T> {
     #[inline]
     fn visit(&mut self, a: T) -> bool {
-        !self.insert(a)
+        self.insert(a)
     }
     #[inline]
     fn is_visited(&self, value: &T) -> bool {

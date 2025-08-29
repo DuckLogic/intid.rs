@@ -149,11 +149,11 @@ fn struct_wrapper() {
 #[test]
 fn insert_expand() {
     let mut data = idset!(0u32);
-    assert_eq!(data.insert(0), true);
-    assert_eq!(data.insert(15), false);
-    assert_eq!(data.insert(512), false);
-    assert_eq!(data.insert(15), true);
-    assert_eq!(data.insert(512), true);
+    assert!(!data.insert(0));
+    assert!(data.insert(15));
+    assert!(data.insert(512));
+    assert!(!data.insert(15));
+    assert!(!data.insert(512));
 }
 
 #[derive(IntegerId, Copy, Clone, Eq, Debug, PartialEq)]
