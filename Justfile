@@ -1,5 +1,5 @@
 check: && check-format
-    cargo +nightly clippy --all-features
+    cargo +nightly clippy --all-targets --all-features
     cargo doc --no-deps --all-features
 
 test: check
