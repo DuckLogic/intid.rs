@@ -10,7 +10,7 @@ use idmap::{direct_idmap, DirectIdMap};
 use KnownState::*;
 
 #[test]
-fn test_remove() {
+fn remove() {
     let mut m = important_cities();
     assert_eq!(m.remove(NewMexico), None);
     for state in IMPORTANT_STATES {
@@ -22,7 +22,7 @@ fn test_remove() {
 }
 
 #[test]
-fn test_eq() {
+fn eq() {
     let first = important_cities();
     let second = important_cities()
         .into_iter()
@@ -33,14 +33,14 @@ fn test_eq() {
 }
 
 #[test]
-fn test_from_iter() {
+fn from_iter() {
     let xs = [
         (California, "San Diego"),
         (NewYork, "New York"),
         (Arizona, "Phoenix"),
     ];
 
-    let map: DirectIdMap<_, _> = xs.iter().cloned().collect();
+    let map: DirectIdMap<_, _> = xs.iter().copied().collect();
 
     for &(k, v) in &xs {
         assert_eq!(map.get(k), Some(&v));
@@ -49,14 +49,14 @@ fn test_from_iter() {
 }
 
 #[test]
-fn test_clone() {
+fn clone() {
     let original = important_cities();
     let cloned = original.clone();
     assert_eq!(original, cloned);
 }
 
 #[test]
-fn test_index() {
+fn index() {
     let map = important_cities();
 
     for state in IMPORTANT_STATES {
@@ -65,18 +65,18 @@ fn test_index() {
 }
 
 #[test]
-fn test_declaration_order() {
+fn declaration_order() {
     let map = important_cities();
     let actual_entries = map
         .iter()
         .map(|(state, &city)| (state, city))
         .collect::<Vec<_>>();
-    let declared_entries = actual_entries.iter().cloned().sorted().collect_vec();
+    let declared_entries = actual_entries.iter().copied().sorted().collect_vec();
     assert_eq!(actual_entries, declared_entries);
     let reversed_map = actual_entries
         .iter()
         .rev()
-        .cloned()
+        .copied()
         .collect::<DirectIdMap<KnownState, &'static str>>();
     let reversed_entries = reversed_map
         .iter()
@@ -86,9 +86,9 @@ fn test_declaration_order() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic = "index out of bounds"]
 #[allow(clippy::no_effect)] // It's supposed to panic
-fn test_index_nonexistent() {
+fn index_nonexistent() {
     let map = important_cities();
 
     map[NorthDakota];
@@ -96,7 +96,7 @@ fn test_index_nonexistent() {
 
 #[test]
 #[cfg(any())] // TODO: Support entry API?
-fn test_entry_insert() {
+fn entry_insert() {
     let mut map = important_cities();
 
     for &state in ALL_STATES {
@@ -107,7 +107,7 @@ fn test_entry_insert() {
 }
 
 #[test]
-fn test_extend_ref() {
+fn extend_ref() {
     let important = important_cities();
     let mut all = DirectIdMap::new();
     all.insert(NewMexico, "Albuquerque");
@@ -124,7 +124,7 @@ fn test_extend_ref() {
 }
 
 #[test]
-fn test_retain() {
+fn retain() {
     let mut map = important_cities();
     map.retain(|state, _| match state {
         NewYork => false, // New york city is too big!
@@ -170,8 +170,8 @@ static ALL_STATES: &[KnownState] = &[Arizona, California, NewMexico, NewYork, No
 static IMPORTANT_STATES: &[KnownState] = &[Arizona, NewYork, California];
 static TINY_STATES: &[KnownState] = &[NorthDakota, NewMexico];
 impl KnownState {
-    fn city(&self) -> &'static str {
-        match *self {
+    fn city(self) -> &'static str {
+        match self {
             Arizona => "Phoenix",
             California => "Los Angeles",
             NewMexico => "Albuquerque",
@@ -180,38 +180,37 @@ impl KnownState {
         }
     }
     fn check_missing(self, target: &DirectIdMap<KnownState, &'static str>) {
-        assert_eq!(target.get(self), None, "Expected no city for {:?}", self);
+        assert_eq!(target.get(self), None, "Expected no city for {self:?}");
     }
     fn check_city(self, target: &DirectIdMap<KnownState, &'static str>) {
         assert_eq!(
             target.get(self),
             Some(&self.city()),
-            "Unexpected city for {:?}",
-            self
+            "Unexpected city for {self:?}"
         );
     }
 }
 
 #[test]
-fn test_wrapper() {
+fn wrapper() {
     let data = direct_idmap! {
         ExampleWrapper(32) => "abc",
         ExampleWrapper(42) => "life",
     };
     assert_eq!(data[ExampleWrapper(32)], "abc");
     assert_eq!(data[ExampleWrapper(42)], "life");
-    assert_eq!(data.get(ExampleWrapper(76)), None)
+    assert_eq!(data.get(ExampleWrapper(76)), None);
 }
 
 #[test]
-fn test_struct_wrapper() {
+fn struct_wrapper() {
     let data = direct_idmap! {
         ExampleStructWrapper::new(32) => "abc",
         ExampleStructWrapper::new(42) => "life"
     };
     assert_eq!(data[ExampleStructWrapper::new(32)], "abc");
     assert_eq!(data[ExampleStructWrapper::new(42)], "life");
-    assert_eq!(data.get(ExampleStructWrapper::new(76)), None)
+    assert_eq!(data.get(ExampleStructWrapper::new(76)), None);
 }
 
 #[derive(IntegerId, Copy, Clone, Debug, Eq, PartialEq)]
@@ -229,7 +228,7 @@ impl ExampleStructWrapper {
 
 #[test]
 #[cfg(feature = "serde")]
-fn test_serde() {
+fn serde() {
     macro_rules! state_tokens {
         ($len:expr, $($state:expr => $city:expr),*) => (&[
             Token::Map { len: Some($len) },

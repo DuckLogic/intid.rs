@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+#![allow(clippy::bool_assert_comparison)] // clearer
 use intid::IntegerId;
 use itertools::Itertools;
 use serde_derive::{Deserialize, Serialize};
@@ -10,7 +11,7 @@ use idmap::direct_idset as idset;
 use KnownState::*;
 
 #[test]
-fn test_remove() {
+fn remove() {
     let mut m = important_states();
     assert_eq!(m.remove(NewMexico), false);
     for state in IMPORTANT_STATES {
@@ -22,7 +23,7 @@ fn test_remove() {
 }
 
 #[test]
-fn test_eq() {
+fn eq() {
     let first = important_states();
     let mut second = important_states().iter().collect_vec();
     second.reverse();
@@ -32,10 +33,10 @@ fn test_eq() {
 }
 
 #[test]
-fn test_from_iter() {
+fn from_iter() {
     let xs = [California, NewYork, Arizona];
 
-    let set: IdSet<_> = xs.iter().cloned().collect();
+    let set: IdSet<_> = xs.iter().copied().collect();
 
     for state in &xs {
         assert_eq!(set[state], true);
@@ -44,14 +45,14 @@ fn test_from_iter() {
 }
 
 #[test]
-fn test_clone() {
+fn clone() {
     let original = important_states();
     let cloned = original.clone();
     assert_eq!(original, cloned);
 }
 
 #[test]
-fn test_index() {
+fn index() {
     let set = important_states();
 
     for state in IMPORTANT_STATES {
@@ -61,7 +62,7 @@ fn test_index() {
 }
 
 #[test]
-fn test_entry_insert() {
+fn entry_insert() {
     let mut set = important_states();
 
     for &state in ALL_STATES {
@@ -71,7 +72,7 @@ fn test_entry_insert() {
 }
 
 #[test]
-fn test_extend_ref() {
+fn extend_ref() {
     let important = important_states();
     let mut all = IdSet::new();
     all.insert(NewMexico);
@@ -88,7 +89,7 @@ fn test_extend_ref() {
 }
 
 #[test]
-fn test_retain() {
+fn retain() {
     let mut set = important_states();
     set.retain(|state| match state {
         NewYork => false, // New york city is too big!
@@ -130,7 +131,7 @@ static IMPORTANT_STATES: &[KnownState] = &[Arizona, NewYork, California];
 static TINY_STATES: &[KnownState] = &[NorthDakota, NewMexico];
 
 #[test]
-fn test_wrapper() {
+fn wrapper() {
     let data = idset!(ExampleWrapper(32), ExampleWrapper(42));
     assert_eq!(data[ExampleWrapper(32)], true);
     assert_eq!(data[ExampleWrapper(42)], true);
@@ -138,15 +139,15 @@ fn test_wrapper() {
 }
 
 #[test]
-fn test_struct_wrapper() {
+fn struct_wrapper() {
     let data = idset!(ExampleStructWrapper::new(32), ExampleStructWrapper::new(42));
     assert_eq!(data[ExampleStructWrapper::new(32)], true);
     assert_eq!(data[ExampleStructWrapper::new(42)], true);
-    assert_eq!(data[ExampleStructWrapper::new(76)], false)
+    assert_eq!(data[ExampleStructWrapper::new(76)], false);
 }
 
 #[test]
-fn test_insert_expand() {
+fn insert_expand() {
     let mut data = idset!(0u32);
     assert_eq!(data.insert(0), true);
     assert_eq!(data.insert(15), false);
@@ -170,7 +171,7 @@ impl ExampleStructWrapper {
 
 #[test]
 #[cfg(feature = "serde")]
-fn test_serde() {
+fn serde() {
     macro_rules! state_tokens {
         ($len:expr, $($state:ident),*) => (&[
             Token::Seq { len: Some($len) },
