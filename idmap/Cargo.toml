@@ -13,8 +13,8 @@ rust-version.workspace = true
 nightly = []
 # Support serde serialization
 serde = ["dep:serde"]
-# Implement petgraph::visit::VisitMap for IdSet
-petgraph = ["dep:petgraph"]
+# Implement petgraph::visit::VisitMap for IdSet (petgraph v0.8)
+petgraph_0_8 = ["dep:petgraph_0_8"]
 
 [dependencies]
 # Defines the IntegerId trait
@@ -23,7 +23,7 @@ intid.workspace = true
 fixedbitset = "0.5"
 # optional features
 serde = { version = "1", optional = true }
-petgraph = { version = "0.8", optional = true }
+petgraph_0_8 = { package = "petgraph", version = "0.8", optional = true }
 
 [lints]
 workspace = true

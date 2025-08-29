@@ -355,8 +355,8 @@ pub struct IntoIter<T: IntegerId> {
 }
 do_impl_iter!(IntoIter);
 
-#[cfg(feature = "petgraph")]
-impl<T: IntegerId> petgraph::visit::VisitMap<T> for DirectIdSet<T> {
+#[cfg(feature = "petgraph_0_8")]
+impl<T: IntegerId> petgraph_0_8::visit::VisitMap<T> for DirectIdSet<T> {
     #[inline]
     fn visit(&mut self, a: T) -> bool {
         !self.insert(a)
