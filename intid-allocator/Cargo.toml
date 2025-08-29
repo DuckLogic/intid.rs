@@ -8,6 +8,19 @@ readme.workspace = true
 license.workspace = true
 rust-version.workspace = true
 edition.workspace = true
+categories = [
+    "concurrency",
+    "data-structures",
+    "rust-patterns",
+    "no-std",
+    "memory-management",
+]
+keywords = [
+    "id allocator",
+    "counter",
+    "id tracker",
+    "lookup table"
+]
 
 [dependencies]
 intid.workspace = true

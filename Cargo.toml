@@ -25,6 +25,10 @@ intid = { path  = "intid", version = "0.3.0-beta.1" }
 missing-docs = "deny"
 
 [workspace.lints.clippy]
+## groups ##
+cargo = { priority = -1, level = "warn" }
+
+# restrictions
 alloc_instead_of_core = "deny"
 std_instead_of_alloc = "deny"
 std_instead_of_core = "deny"
