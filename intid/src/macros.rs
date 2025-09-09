@@ -62,7 +62,7 @@ macro_rules! define_newtype_id {
             type Int = <$inner as intid::IntegerId>::Int;
             const MIN_ID: Self = $name(<$inner as $crate::IntegerId>::MIN_ID);
             const MAX_ID: Self = $name(<$inner as $crate::IntegerId>::MAX_ID);
-            const MIN_ID_INT: Self::Int = <$inner as $crate::IntegerId>::MIN_ID;
+            const MIN_ID_INT: Self::Int = <$inner as $crate::IntegerId>::MIN_ID_INT;
             const MAX_ID_INT: Self::Int = <$inner as $crate::IntegerId>::MAX_ID_INT;
             const TRUSTED_RANGE: Option<$crate::trusted::TrustedRangeToken<Self>> = {
                 // SAFETY: We simply delegate, so we are safe if $inner is

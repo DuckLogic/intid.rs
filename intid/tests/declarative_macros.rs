@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+use core::num::NonZeroU32;
 
 intid::define_newtype_id! {
     /// Docs should work fine.
@@ -10,11 +11,19 @@ intid::define_newtype_counter! {
     #[derive(Default)]
     pub struct Counter(u32);
 }
+intid::define_newtype_counter! {
+    pub struct CounterNonzero(NonZeroU32);
+}
 
 #[test]
 fn verify_derive() {
     assert_id::<Plain>();
     assert_counter::<Counter>();
+    assert_counter::<CounterNonzero>();
+    assert_eq!(
+        <CounterNonzero as intid::IntegerIdCounter>::START.0.get(),
+        1
+    );
 }
 
 fn assert_id<T: intid::IntegerId>() {}
