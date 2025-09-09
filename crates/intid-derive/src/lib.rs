@@ -48,7 +48,7 @@ fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
 
 /// Implements `intid::IntegerIdCounter` for a newtype struct.
 ///
-/// ```rust
+/// ```rust,no_compile
 /// use intid::{IntegerId, IntegerIdCounter};
 /// #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 /// #[derive(IntegerIdCounter, IntegerId)]

@@ -20,7 +20,7 @@ quote = "1"
 proc-macro2 = "1"
 
 [dev-dependencies]
-intid = { workspace = true, features = ["derive"] }
+# NOTE: Adding `intid` here causes a circular dependency, breaking `cargo publish`
 
 [features]
 # doesn't do anything but added for completeness
