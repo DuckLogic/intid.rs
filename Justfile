@@ -3,7 +3,7 @@ check: && check-format
     cargo doc --no-deps --all-features
 
 test: check
-    cargo +nightly test --all-features
+    cargo +nightly nextest run --all-features
 
 test-full: test
     cargo +nightly test-all-features
