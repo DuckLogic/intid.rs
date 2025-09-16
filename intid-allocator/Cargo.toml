@@ -24,10 +24,14 @@ keywords = [
 ]
 
 [dependencies]
-intid.workspace = true
 atomic = {  version = "0.6", optional = true }
 bytemuck = { version = "1", optional = true }
 rustversion = "1"
+
+[dependencies.intid]
+package = "intid-core"
+version = "0.3.0-rc.2"
+path = "../intid-core"
 
 [features]
 default = ["std", "atomic"]

@@ -1,17 +1,17 @@
 #![allow(missing_docs)]
 use core::num::NonZeroU32;
 
-intid::define_newtype_id! {
+intid_core::define_newtype_id! {
     /// Docs should work fine.
     pub struct Plain(u32);
 }
 
-intid::define_newtype_counter! {
+intid_core::define_newtype_counter! {
     /// So should other derive marcos.
     #[derive(Default)]
     pub struct Counter(u32);
 }
-intid::define_newtype_counter! {
+intid_core::define_newtype_counter! {
     pub struct CounterNonzero(NonZeroU32);
 }
 
@@ -21,16 +21,18 @@ fn verify_derive() {
     assert_counter::<Counter>();
     assert_counter::<CounterNonzero>();
     assert_eq!(
-        <CounterNonzero as intid::IntegerIdCounter>::START.0.get(),
+        <CounterNonzero as intid_core::IntegerIdCounter>::START
+            .0
+            .get(),
         1
     );
 }
 
-fn assert_id<T: intid::IntegerId>() {}
-fn assert_contiguous<T: intid::IntegerIdContiguous>() {
+fn assert_id<T: intid_core::IntegerId>() {}
+fn assert_contiguous<T: intid_core::IntegerIdContiguous>() {
     assert_id::<T>();
 }
-fn assert_counter<T: intid::IntegerIdCounter>() {
+fn assert_counter<T: intid_core::IntegerIdCounter>() {
     assert_contiguous::<T>();
     assert_eq!(T::START.to_int(), T::START_INT);
 }

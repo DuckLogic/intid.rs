@@ -1,6 +1,6 @@
 [package]
-name = "intid"
-description = "Defines the IntegerId trait"
+name = "intid-core"
+description = "Defines the IntegerId trait without a dependency on intid_derive"
 version.workspace = true
 authors.workspace = true
 repository.workspace = true
@@ -12,21 +12,20 @@ categories = ["no-std::no-alloc", "no-std", "rust-patterns", "data-structures"]
 keywords = ["intid", "id", "counter", "idmap", "integer"]
 
 [dependencies]
-intid-derive = { workspace = true, optional = true }
-intid-core.workspace = true
+num-traits = { version = "0.2", optional = true }
+nonmax = { version = "0.5", optional = true }
+bytemuck = { version = "1", optional = true }
 
 [features]
 default = []
-# Export a procedural macro implementing IntegerId
-derive = ["dep:intid-derive"]
 # Have UnsignedPrimitiveInteger extend num_traits::PrimInt
-num-traits = ["intid-core/num-traits"]
+num-traits = ["dep:num-traits"]
 # Implement IntegerId for the nonmax integer types
-nonmax = ["intid-core/nonmax"]
+nonmax = ["dep:nonmax"]
 # integration with bytemuck
-bytemuck = ["intid-core/bytemuck"]
+bytemuck = ["dep:bytemuck"]
 # all features to test in CI (excludes `nightly`)
-__ci_all = ["derive", "intid-core/__ci_all"]
+__ci_all = ["num-traits", "nonmax", "bytemuck"]
 
 [lints]
 workspace = true

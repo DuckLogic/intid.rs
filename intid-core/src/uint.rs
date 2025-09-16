@@ -114,7 +114,7 @@ pub const fn max_value<T: UnsignedPrimInt>() -> T {
 ///
 /// ## Examples
 /// ```
-/// use intid::uint::debug_desc;
+/// use intid_core::uint::debug_desc;
 /// assert_eq!(
 ///     debug_desc(3u32).to_string(),
 ///     "3"

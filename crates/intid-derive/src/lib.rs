@@ -12,9 +12,7 @@ use proc_macro2::TokenStream;
 use syn::spanned::Spanned;
 use syn::{Data, DataStruct, DeriveInput, Expr, ExprLit, Fields, Lit, Member, Type};
 
-/// Implements `intid::IntegerIdContiguous` for a newtype struct.
-///
-/// This is automatically derived when deriving `IntegerIdCounter`.
+/// See `intid` crate for docs.
 #[proc_macro_derive(IntegerIdContiguous, attributes(intid))]
 pub fn integer_id_contiguous(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
@@ -46,33 +44,7 @@ fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
     })
 }
 
-/// Implements `intid::IntegerIdCounter` for a newtype struct.
-///
-/// ```rust,no_compile
-/// use intid::{IntegerId, IntegerIdCounter};
-/// #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-/// #[derive(IntegerIdCounter, IntegerId)]
-/// struct Example(u32);
-/// fn print_counter<T: IntegerIdCounter>() -> String {
-///     format!("Starting at {:?}", T::START)
-/// }
-/// assert_eq!(
-///     print_counter::<Example>(),
-///     "Starting at Example(0)"
-/// );
-/// ```
-///
-/// This will automatically derive `IntegerIdContiguous` trait as well,
-/// since that trait is necessary to implement `IntegerIdCounter`.
-/// Skip deriving the contiguous trait by using the attribute `#[intid(counter(skip_contiguous))]`:
-/// ```rust
-/// use intid::{IntegerIdCounter, IntegerId};
-/// #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-/// #[derive(IntegerId, IntegerIdCounter)]
-/// #[intid(counter(skip_contiguous))]
-/// struct Explicit(u32);
-/// impl intid::IntegerIdContiguous for Explicit {}
-/// ```
+/// See `intid` crate for docs.
 #[proc_macro_derive(IntegerIdCounter, attributes(intid))]
 pub fn integer_id_counter(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
@@ -111,7 +83,7 @@ fn impl_id_counter(ast: &DeriveInput) -> syn::Result<TokenStream> {
     })
 }
 
-/// Implements `intid::IntegerId` for a newtype struct or C-like enum.
+/// See the documentation in the `intid` crate for details.
 #[proc_macro_derive(IntegerId, attributes(intid))]
 pub fn integer_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();

@@ -59,7 +59,7 @@ macro_rules! define_newtype_id {
         #[repr(transparent)]
         $vis struct $name($(#[$field_attr])* $inner_vis $inner);
         impl $crate::IntegerId for $name {
-            type Int = <$inner as intid::IntegerId>::Int;
+            type Int = <$inner as $crate::IntegerId>::Int;
             const MIN_ID: Self = $name(<$inner as $crate::IntegerId>::MIN_ID);
             const MAX_ID: Self = $name(<$inner as $crate::IntegerId>::MAX_ID);
             const MIN_ID_INT: Self::Int = <$inner as $crate::IntegerId>::MIN_ID_INT;
