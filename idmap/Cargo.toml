@@ -22,7 +22,7 @@ __ci_all = ["serde", "petgraph_0_8"]
 
 [dependencies]
 # Defines the IntegerId trait
-intid = { path = "../intid-core", package = "intid-core", version = "0.3.0-rc.2" }
+intid = { path = "../intid-core", package = "intid-core", version = "0.3.0-rc.3" }
 # Used for DirectIdSet
 fixedbitset = "0.5"
 # optional features

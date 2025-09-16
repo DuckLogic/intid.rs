@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.3.0-rc.2"
+version = "0.3.0-rc.3"
 repository = "https://github.com/DuckLogic/intid.rs"
 authors = ["Techcable <git@techcable.net>"]
 readme = "README.md"
@@ -20,9 +20,9 @@ members = ["intid", "intid-core", "idmap", "intid-allocator", "crates/*"]
 
 [workspace.dependencies]
 # crate dependencies
-intid-derive = { path  = "crates/intid-derive", version = "0.3.0-rc.2" }
-intid-core = { path = "intid-core", version = "0.3.0-rc.2"}
-intid = { path  = "intid", version = "0.3.0-rc.2" }
+intid-derive = { path  = "crates/intid-derive", version = "0.3.0-rc.3" }
+intid-core = { path = "intid-core", version = "0.3.0-rc.3"}
+intid = { path  = "intid", version = "0.3.0-rc.3" }
 
 [workspace.lints.rust]
 missing-docs = "deny"
