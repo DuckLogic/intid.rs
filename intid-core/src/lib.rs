@@ -80,7 +80,7 @@ pub use uint::UnsignedPrimInt;
 ///
 /// This type should not have interior mutability.
 /// This is guaranteed by the `Copy` bound.
-pub trait IntegerId: Copy + Eq + Debug + 'static {
+pub trait IntegerId: Copy + Eq + Debug + Send + Sync + 'static {
     /// The underlying integer type.
     ///
     /// Every valid instance of `Self` should correspond to a valid `Self::Int`.
