@@ -5,6 +5,9 @@
 //! In the `idmap` crate, the derive feature is on by default.
 #![allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 
+use core::fmt::{Display, Formatter, Write};
+use core::str::FromStr;
+
 use proc_macro2::{Ident, Span};
 use quote::{quote, quote_spanned};
 
@@ -201,9 +204,10 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
             }
         }
         Data::Enum(ref data) => {
-            let mut idx = 0;
+            let mut idx = 0u64;
             let mut variant_matches = Vec::new();
             let mut errors = Vec::new();
+            let repr = determine_repr(ast)?;
             if data.variants.is_empty() {
                 return Err(syn::Error::new(Span::call_site(), "Enum must be inhabited"));
             }
@@ -223,7 +227,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                             lit: Lit::Int(value),
                             ..
                         }),
-                    )) => match value.base10_parse::<usize>() {
+                    )) => match value.base10_parse::<u64>() {
                         Ok(discriminant) => {
                             idx = discriminant;
                         }
@@ -236,10 +240,30 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     None => {}
                 }
                 variant_matches.push(quote!(#idx => #name::#ident));
-                idx += 1;
+                idx = idx.checked_add(1).expect("discriminant overflow");
             }
-            // TODO: Dont assume that the enum fits in an usize
-            let int_type = quote!(usize);
+            let int_type = match repr {
+                None | Some(Repr::C(_)) => {
+                    let ctx = format!("(indexes in [0, {idx}) range)");
+                    let needed_bits = idx
+                        .checked_next_power_of_two()
+                        .unwrap_or_else(|| panic!("Failed to determine discriminant size {ctx}"))
+                        .max(8); // everything needs at least 8 bits
+                    assert!(needed_bits <= 64, "too many bits for discriminant {ctx}");
+                    IntType {
+                        bits: Some(u32::try_from(needed_bits).unwrap()),
+                        signed: false,
+                        span: Span::call_site(),
+                    }
+                }
+                Some(Repr::Integer(value)) => value,
+                Some(other) => {
+                    return Err(syn::Error::new(
+                        other.span(),
+                        "failed to determine discrimiant type for {other}",
+                    ))
+                }
+            };
             let mut errors = errors.into_iter();
             let select_method = |cmp: TokenStream| {
                 quote! {
@@ -287,7 +311,12 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
 
                         #[inline]
                         fn from_int_checked(x: #int_type) -> Option<Self> {
-                            Some(match x {
+                            // NOTE: Works assuming that x fits in u64
+                            // Needed since the literals in variant_matches have to have a concrete type
+                            const _: () = {
+                                assert!(#int_type::BITS <= u64::BITS, "too many bits for derive");
+                            };
+                            Some(match u64::from(x) {
                                 #(#variant_matches,)*
                                 _ => return None,
                             })
@@ -295,7 +324,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
 
                         #[inline]
                         unsafe fn from_int_unchecked(x: #int_type) -> Self {
-                            match x {
+                            match u64::from(x) {
                                 #(#variant_matches,)*
                                 _ => {
                                     // SAFETY: Validity guaranteed by caller
@@ -305,8 +334,8 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                         }
 
                         #[inline]
-                        fn to_int(self) -> usize {
-                            self as usize
+                        fn to_int(self) -> #int_type {
+                            self as #int_type
                         }
                     }
                     #from_impl
@@ -426,4 +455,115 @@ struct CounterOptions {
     /// The span for the `counter` ident.
     name_span: Span,
     skip_contiguous: Option<Span>,
+}
+
+#[derive(Debug, Copy, Clone)]
+struct IntType {
+    signed: bool,
+    // If `None`, this is a usize/isize
+    bits: Option<u32>,
+    span: Span,
+}
+impl quote::ToTokens for IntType {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let ident = Ident::new(&self.to_string(), self.span);
+        ident.to_tokens(tokens);
+    }
+}
+impl Display for IntType {
+    fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
+        f.write_char(if self.signed { 'i' } else { 'u' })?;
+        if let Some(bits) = self.bits {
+            write!(f, "{bits}")
+        } else {
+            f.write_str("size")
+        }
+    }
+}
+impl Eq for IntType {}
+impl PartialEq for IntType {
+    fn eq(&self, other: &Self) -> bool {
+        self.signed == other.signed && self.bits == other.bits
+    }
+}
+impl FromStr for IntType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let signed = match s.chars().next() {
+            Some('i') => true,
+            Some('u') => false,
+            _ => return Err(()),
+        };
+        let s = &s[1..];
+        let bits = if s == "size" {
+            None
+        } else {
+            let bits = u32::from_str(s).map_err(|_| ())?;
+            match bits {
+                8 | 16 | 32 | 64 | 128 => Some(bits),
+                _ => return Err(()),
+            }
+        };
+        Ok(IntType {
+            bits,
+            signed,
+            span: Span::call_site(),
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Repr {
+    C(Span),
+    Transparent(Span),
+    Integer(IntType),
+}
+impl Repr {
+    pub fn span(&self) -> Span {
+        match *self {
+            Repr::C(span) | Repr::Transparent(span) => span,
+            Repr::Integer(ref inner) => inner.span,
+        }
+    }
+}
+impl Display for Repr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_str("#[repr(")?;
+        match self {
+            Repr::C(_) => f.write_char('C')?,
+            Repr::Transparent(_) => f.write_str("transparent")?,
+            Repr::Integer(inner) => Display::fmt(&inner, f)?,
+        }
+        f.write_char('}')
+    }
+}
+
+fn determine_repr(input: &DeriveInput) -> Result<Option<Repr>, syn::Error> {
+    let mut result = None;
+    for attr in &input.attrs {
+        if attr.meta.path().is_ident("repr") {
+            attr.parse_nested_meta(|meta| {
+                if result.is_some() {
+                    return Err(meta.error("Encountered multiple repr(...) attributes"));
+                }
+                let ident = meta.path.require_ident()?;
+                let s = ident.to_string();
+                result = Some(match &*s {
+                    "C" => Repr::C(ident.span()),
+                    "transparent" => Repr::Transparent(ident.span()),
+                    x if x.parse::<IntType>().is_ok() => {
+                        let int = x.parse::<IntType>().unwrap();
+                        Repr::Integer(IntType {
+                            span: ident.span(),
+                            ..int
+                        })
+                    }
+                    _ => return Err(syn::Error::new(meta.path.span(), "Unknown #[repr])")),
+                });
+                Ok(())
+            })?;
+        }
+    }
+    Ok(result)
 }
