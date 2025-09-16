@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 #![allow(clippy::bool_assert_comparison)] // clearer
-use intid::IntegerId;
+use intid_derive::IntegerId;
 use itertools::Itertools;
 use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "serde")]

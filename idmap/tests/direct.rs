@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use intid::IntegerId;
+use intid_derive::IntegerId;
 
 use itertools::Itertools;
 use serde_derive::{Deserialize, Serialize};
