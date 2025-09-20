@@ -20,15 +20,14 @@
 #![no_std]
 #![cfg_attr(feature = "nightly", feature(never_type,))]
 
-use core::cmp::Ordering;
 use core::fmt::Debug;
-use core::hash::{Hash, Hasher};
 
 #[macro_use]
 mod macros;
 mod impls;
 pub mod trusted;
 pub mod uint;
+pub mod utils;
 
 pub use uint::UnsignedPrimInt;
 
@@ -212,36 +211,6 @@ pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
     #[inline]
     fn checked_sub(this: Self, offset: Self::Int) -> Option<Self> {
         uint::checked_sub(this.to_int(), offset).and_then(Self::from_int_checked)
-    }
-}
-
-/// A wrapper around an [`IntegerId`] which implements [`Eq`], [`Ord`], and [`Hash`]
-/// based on the integer value.
-#[derive(Copy, Clone, Debug)]
-pub struct OrderByInt<T: IntegerId>(pub T);
-impl<T: IntegerId> Ord for OrderByInt<T> {
-    #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.to_int().cmp(&other.0.to_int())
-    }
-}
-impl<T: IntegerId> PartialOrd for OrderByInt<T> {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl<T: IntegerId> Eq for OrderByInt<T> {}
-impl<T: IntegerId> PartialEq for OrderByInt<T> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.0.to_int() == other.0.to_int()
-    }
-}
-impl<T: IntegerId> Hash for OrderByInt<T> {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.to_int().hash(state);
     }
 }
 

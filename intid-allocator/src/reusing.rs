@@ -25,7 +25,7 @@ pub struct IdAllocator<T: IntegerIdCounter> {
     ///
     /// The use of a [`BinaryHeap`] here is inspired by the `thread-local` crate.
     /// No part of the implementation was copied.
-    heap: BinaryHeap<core::cmp::Reverse<intid::OrderByInt<T>>>,
+    heap: BinaryHeap<core::cmp::Reverse<intid::utils::OrderByInt<T>>>,
 }
 impl<T: IntegerIdCounter> Default for IdAllocator<T> {
     fn default() -> Self {
@@ -98,6 +98,7 @@ impl<T: IntegerIdCounter> IdAllocator<T> {
     /// Used ids will be used in preference to creating new ones.
     #[inline]
     pub fn free(&mut self, id: T) {
-        self.heap.push(core::cmp::Reverse(intid::OrderByInt(id)));
+        self.heap
+            .push(core::cmp::Reverse(intid::utils::OrderByInt(id)));
     }
 }
