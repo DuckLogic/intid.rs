@@ -59,9 +59,9 @@ impl<T: IntegerId> TrustedRangeToken<T> {
     /// You must ensure that `U` can be trusted with the requirements of [`TrustedRangeToken`]
     /// whenever `U` meets those same requirements.
     pub const unsafe fn assume_valid_if<U: IntegerId>() -> Option<Self> {
-        if <T as IntegerId>::TRUSTED_RANGE.is_some() {
-            // SAFETY: Caller guarantees that U is trusted whenever T is
-            Some(unsafe { TrustedRangeToken::assume_valid() })
+        if <U as IntegerId>::TRUSTED_RANGE.is_some() {
+            // SAFETY: Caller guarantees that T is trusted whenever U is
+            Some(unsafe { TrustedRangeToken::<T>::assume_valid() })
         } else {
             None
         }
