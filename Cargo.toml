@@ -16,11 +16,11 @@ edition = "2021"
 
 [workspace]
 resolver = "2"
-members = ["intid", "intid-core", "idmap", "intid-allocator", "crates/*"]
+members = ["intid", "intid-core", "idmap", "intid-allocator", "intid-derive"]
 
 [workspace.dependencies]
 # crate dependencies
-intid-derive = { path  = "crates/intid-derive", version = "0.3.0-rc.3" }
+intid-derive = { path  = "intid-derive", version = "0.3.0-rc.3" }
 intid-core = { path = "intid-core", version = "0.3.0-rc.3"}
 intid = { path  = "intid", version = "0.3.0-rc.3" }
 

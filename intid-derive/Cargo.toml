@@ -27,7 +27,7 @@ proc-macro2 = "1"
 # NOTE: The renaming doesn't interact well with workspace inheritence here
 package = "intid-core"
 version = "0.3.0-rc.3"
-path = "../../intid-core"
+path = "../intid-core"
 
 [features]
 # doesn't do anything but added for completeness
