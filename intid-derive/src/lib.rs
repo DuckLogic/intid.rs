@@ -182,10 +182,16 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                         #[allow(clippy::init_numbered_fields)]
                         #impl_decl {
                             type Int = #int_type;
-                            const MIN_ID: Self = #name { #field_name: #field_type_as_id::MIN_ID };
-                            const MAX_ID: Self = #name { #field_name: #field_type_as_id::MAX_ID };
-                            const MIN_ID_INT: Self::Int = #field_type_as_id::MIN_ID_INT;
-                            const MAX_ID_INT: Self::Int = #field_type_as_id::MIN_ID_INT;
+                            const MIN_ID: Option<Self> = match #field_type_as_id::MIN_ID {
+                                Some(min) => Some(#name { #field_name: min }),
+                                None => None,
+                            };
+                            const MAX_ID: Option<Self> = match #field_type_as_id::MAX_ID {
+                                Some(max) => Some(#name { #field_name: max }),
+                                None => None,
+                            };
+                            const MIN_ID_INT: Option<Self::Int> = #field_type_as_id::MIN_ID_INT;
+                            const MAX_ID_INT: Option<Self::Int> = #field_type_as_id::MIN_ID_INT;
                             const TRUSTED_RANGE: Option<intid::trusted::TrustedRangeToken<Self>> = {
                                 // SAFETY: We simply delegate, so are valid if #field_type is
                                 unsafe { intid::trusted::TrustedRangeToken::assume_valid_if::<#field_type>() }
@@ -229,9 +235,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
             let mut variant_matches = Vec::new();
             let mut errors = Vec::new();
             let repr = determine_repr(ast)?;
-            if data.variants.is_empty() {
-                return Err(syn::Error::new(Span::call_site(), "Enum must be inhabited"));
-            }
+            let inhabited = !data.variants.is_empty();
             for variant in &data.variants {
                 let ident = &variant.ident;
                 match variant.fields {
@@ -310,6 +314,16 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                 .unwrap();
             let select_max = select_method(quote!(>));
             let select_min = select_method(quote!(<));
+            let [min_id, max_id] = if inhabited {
+                [select_min, select_max].map(|select_impl| {
+                    quote!(Some({
+                        #select_impl
+                        #do_select
+                    }))
+                })
+            } else {
+                [quote!(None), quote!(None)]
+            };
             if let Some(mut error) = errors.next() {
                 for other in errors {
                     error.combine(other);
@@ -319,16 +333,16 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                 Ok(quote! {
                     impl intid::IntegerId for #name {
                         type Int = #int_type;
-                        const MAX_ID: Self = {
-                            #select_max
-                            #do_select
+                        const MAX_ID: Option<Self> = #max_id;
+                        const MIN_ID: Option<Self> = #min_id;
+                        const MAX_ID_INT: Option<#int_type> = match Self::MAX_ID {
+                            Some(max) => Some(max as #int_type),
+                            None => None,
                         };
-                        const MIN_ID: Self = {
-                            #select_min
-                            #do_select
+                        const MIN_ID_INT: Option<#int_type> = match Self::MIN_ID {
+                            Some(min) => Some(min as #int_type),
+                            None => None,
                         };
-                        const MAX_ID_INT: #int_type = Self::MAX_ID as #int_type;
-                        const MIN_ID_INT: #int_type = Self::MIN_ID as #int_type;
                         const TRUSTED_RANGE: Option<intid::trusted::TrustedRangeToken<Self>> = {
                             // SAFETY: We accurately report the range of enum discriminants
                             Some(unsafe { intid::trusted::TrustedRangeToken::assume_valid() })
@@ -432,7 +446,9 @@ fn parse_options(ast: &DeriveInput) -> syn::Result<MainOptions> {
 
 #[derive(Default, Debug)]
 struct MainOptions {
-    /// Automatically generate a `From<&Self>` implementation
+    /// Automatically generate a `From<&Self>` implementation.
+    ///
+    /// TODO: This should instead generate a `From<Inner>` implementation.
     from: Option<Span>,
     /// Options specific to a counter.
     counter: Option<CounterOptions>,

@@ -18,6 +18,7 @@
 //! [`intid`]: https://docs.rs/intid/latest/intid
 //! [`intid_derive`]: https://docs.rs/intid-derive/latest/intid_derive
 #![no_std]
+#![cfg_attr(feature = "nightly", feature(never_type,))]
 
 use core::cmp::Ordering;
 use core::fmt::Debug;
@@ -88,18 +89,22 @@ pub trait IntegerId: Copy + Eq + Debug + Send + Sync + 'static {
     /// Every valid instance of `Self` should correspond to a valid `Self::Int`.
     /// However, the other direction may not always be true.
     type Int: uint::UnsignedPrimInt;
-    /// The value of this type with the smallest integer value.
-    const MIN_ID: Self;
-    /// The value of this type with the largest integer value.
-    const MAX_ID: Self;
-    /// The value of [`Self::MIN_ID`] a primitive integer.
+    /// The value of this type with the smallest integer value,
+    /// or `None` if this type is uninhabited.
+    const MIN_ID: Option<Self>;
+    /// The value of this type with the largest integer value,
+    /// or `None` if this type is uninhabited.
+    const MAX_ID: Option<Self>;
+    /// The value of [`Self::MIN_ID`] a primitive integer,
+    /// or `None` if this type is uninhabited.
     ///
     /// This is necessary because trait methods cannot be marked `const`.
-    const MIN_ID_INT: Self::Int;
-    /// The value of [`Self::MAX_ID`] a primitive integer.
+    const MIN_ID_INT: Option<Self::Int>;
+    /// The value of [`Self::MAX_ID`] a primitive integer,
+    /// or `None` if this type is uninhabited.
     ///
     /// This is necessary because trait methods cannot be marked `const`.
-    const MAX_ID_INT: Self::Int;
+    const MAX_ID_INT: Option<Self::Int>;
 
     /// Indicates that the type's implementation of [`IntegerId::to_int`] can trusted
     /// to only return values in the range `MIN_ID_INT..=MAX_ID_INT`.
@@ -167,6 +172,9 @@ pub trait IntegerIdContiguous: IntegerId {}
 ///
 /// This is used by the `intid-allocator` crate to provide an atomic counter to allocate new ids.
 /// It also provides more complex allocators that can reuse ids that have been freed.
+///
+/// This type cannot be implemented for uninhabited types like [`core::convert::Infallible`] or `!`,
+/// as there is no valid implementation of [`Self::START`].
 pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
     /// Where a counter a should start from.
     ///

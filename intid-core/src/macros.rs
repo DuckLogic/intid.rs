@@ -60,10 +60,16 @@ macro_rules! define_newtype_id {
         $vis struct $name($(#[$field_attr])* $inner_vis $inner);
         impl $crate::IntegerId for $name {
             type Int = <$inner as $crate::IntegerId>::Int;
-            const MIN_ID: Self = $name(<$inner as $crate::IntegerId>::MIN_ID);
-            const MAX_ID: Self = $name(<$inner as $crate::IntegerId>::MAX_ID);
-            const MIN_ID_INT: Self::Int = <$inner as $crate::IntegerId>::MIN_ID_INT;
-            const MAX_ID_INT: Self::Int = <$inner as $crate::IntegerId>::MAX_ID_INT;
+            const MIN_ID: Option<Self> = match <$inner as $crate::IntegerId>::MIN_ID {
+                Some(min) => Some($name(min)),
+                None => None,
+            };
+            const MAX_ID: Option<Self> = match <$inner as $crate::IntegerId>::MAX_ID {
+                Some(max) => Some($name(max)),
+                None => None,
+            };
+            const MIN_ID_INT: Option<Self::Int> = <$inner as $crate::IntegerId>::MIN_ID_INT;
+            const MAX_ID_INT: Option<Self::Int> = <$inner as $crate::IntegerId>::MAX_ID_INT;
             const TRUSTED_RANGE: Option<$crate::trusted::TrustedRangeToken<Self>> = {
                 // SAFETY: We simply delegate, so we are safe if $inner is
                 unsafe { $crate::trusted::TrustedRangeToken::assume_valid_if::<$inner>() }

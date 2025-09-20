@@ -4,10 +4,10 @@ macro_rules! impl_primint {
     ($($target:ident),*) => {$(
         impl crate::IntegerId for $target {
             type Int = $target;
-            const MIN_ID: Self = 0;
-            const MAX_ID: Self = $target::MAX;
-            const MIN_ID_INT: Self::Int = 0;
-            const MAX_ID_INT: Self::Int = $target::MAX;
+            const MIN_ID: Option<Self> = Some(0);
+            const MAX_ID: Option<Self> = Some($target::MAX);
+            const MIN_ID_INT: Option<Self::Int> = Some(0);
+            const MAX_ID_INT: Option<Self::Int> = Some($target::MAX);
             // SAFETY: Range is correct
             const TRUSTED_RANGE: Option<crate::trusted::TrustedRangeToken<Self>> = unsafe { Some(crate::trusted::TrustedRangeToken::assume_valid()) };
             #[inline]
@@ -32,21 +32,21 @@ macro_rules! impl_nonzero_int {
     ($($target:ident => $int:ident),*) => {$(
         impl crate::IntegerId for core::num::$target {
             type Int = $int;
-            const MIN_ID: Self = {
+            const MIN_ID: Option<Self> = {
                 // while using NonZero::MIN might be nice, that requires rust 1.70
                 // SAFETY: One is not zero
                 unsafe {
-                    core::num::$target::new_unchecked(1)
+                    Some(core::num::$target::new_unchecked(1))
                 }
             };
-            const MAX_ID: Self = {
+            const MAX_ID: Option<Self> = {
                 // SAFETY: Maximum is not zero
                 unsafe {
-                    core::num::$target::new_unchecked($int::MAX)
+                    Some(core::num::$target::new_unchecked($int::MAX))
                 }
             };
-            const MIN_ID_INT: Self::Int = 1;
-            const MAX_ID_INT: Self::Int = $int::MAX;
+            const MIN_ID_INT: Option<Self::Int> = Some(1);
+            const MAX_ID_INT: Option<Self::Int> = Some($int::MAX);
             // SAFETY: Range is correct
             const TRUSTED_RANGE: Option<crate::trusted::TrustedRangeToken<Self>> = unsafe { Some(crate::trusted::TrustedRangeToken::assume_valid()) };
 
@@ -70,7 +70,10 @@ macro_rules! impl_nonzero_int {
         }
         impl crate::IntegerIdContiguous for core::num::$target {}
         impl crate::IntegerIdCounter for core::num::$target {
-            const START: Self = <Self as crate::IntegerId>::MIN_ID;
+            const START: Self = match <Self as crate::IntegerId>::MIN_ID {
+                Some(valid) => valid,
+                None => panic!("type should be inhabited")
+            };
             const START_INT: $int = Self::START.get();
         }
     )*}
@@ -89,10 +92,10 @@ macro_rules! do_nonmax_impl {
     ($($target:ident => $int:ident),*) => {$(
         impl crate::IntegerId for nonmax::$target {
             type Int = $int;
-            const MIN_ID: Self = nonmax::$target::ZERO;
-            const MAX_ID: Self = nonmax::$target::MAX;
-            const MIN_ID_INT: Self::Int = 0;
-            const MAX_ID_INT: Self::Int = nonmax::$target::MAX.get();
+            const MIN_ID: Option<Self> = Some(nonmax::$target::ZERO);
+            const MAX_ID: Option<Self> = Some(nonmax::$target::MAX);
+            const MIN_ID_INT: Option<Self::Int> = Some(0);
+            const MAX_ID_INT: Option<Self::Int> = Some(nonmax::$target::MAX.get());
             // SAFETY: Range is correct
             const TRUSTED_RANGE: Option<crate::trusted::TrustedRangeToken<Self>> = unsafe { Some(crate::trusted::TrustedRangeToken::assume_valid()) };
 
@@ -120,3 +123,51 @@ macro_rules! do_nonmax_impl {
 }
 #[cfg(feature = "nonmax")]
 do_nonmax_impl!(NonMaxU8 => u8, NonMaxU16 => u16, NonMaxU32 => u32, NonMaxU64 => u64, NonMaxU128 => u128, NonMaxUsize => usize);
+
+macro_rules! impl_uninhabited {
+    ($target:ty) => {
+        impl crate::IntegerId for $target {
+            type Int = u8;
+            const MIN_ID: Option<Self> = None;
+            const MAX_ID: Option<Self> = None;
+            const MIN_ID_INT: Option<Self::Int> = None;
+            const MAX_ID_INT: Option<Self::Int> = None;
+            const TRUSTED_RANGE: Option<crate::trusted::TrustedRangeToken<Self>> = {
+                // SAFETY: Range is correct (vacuously)
+                unsafe { Some(crate::trusted::TrustedRangeToken::assume_valid()) }
+            };
+
+            #[track_caller]
+            #[inline]
+            fn from_int(id: Self::Int) -> Self {
+                panic!(
+                    "Cannot initialize uninhabited type {this} with {id}",
+                    this = stringify!($target),
+                )
+            }
+
+            #[inline]
+            fn from_int_checked(_id: Self::Int) -> Option<Self> {
+                None
+            }
+
+            #[inline]
+            unsafe fn from_int_unchecked(_id: Self::Int) -> Self {
+                // SAFETY: Caller guarantees this is called only if `id` is a valid index,
+                // and there are no valid indices
+                unsafe {
+                    core::hint::unreachable_unchecked();
+                }
+            }
+
+            #[inline]
+            fn to_int(self) -> Self::Int {
+                match self {}
+            }
+        }
+        impl crate::IntegerIdContiguous for $target {}
+    };
+}
+impl_uninhabited!(core::convert::Infallible);
+#[cfg(feature = "nightly")]
+impl_uninhabited!(!);
