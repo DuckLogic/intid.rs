@@ -329,6 +329,10 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                         };
                         const MAX_ID_INT: #int_type = Self::MAX_ID as #int_type;
                         const MIN_ID_INT: #int_type = Self::MIN_ID as #int_type;
+                        const TRUSTED_RANGE: Option<intid::trusted::TrustedRangeToken<Self>> = {
+                            // SAFETY: We accurately report the range of enum discriminants
+                            Some(unsafe { intid::trusted::TrustedRangeToken::assume_valid() })
+                        };
 
                         #[inline]
                         fn from_int_checked(x: #int_type) -> Option<Self> {
