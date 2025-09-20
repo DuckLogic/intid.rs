@@ -21,5 +21,5 @@ fix-spelling: (_typos "--write-changes")
 
 _typos *flags:
     # use pinned version to avoid breaking build
-    uvx typos@1.35 {{flags}}
+    uvx typos@1.36 {{flags}}
 
