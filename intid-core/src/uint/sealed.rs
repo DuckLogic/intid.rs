@@ -7,6 +7,8 @@ pub trait PrivateUnsignedInt: Sized {
     const TYPE_NAME: &'static str;
     fn checked_add(self, other: Self) -> Option<Self>;
     fn checked_sub(self, other: Self) -> Option<Self>;
+    unsafe fn unchecked_add(self, other: Self) -> Self;
+    unsafe fn unchecked_sub(self, other: Self) -> Self;
     fn from_usize_checked(val: usize) -> Option<Self>;
     fn from_usize_wrapping(val: usize) -> Self;
     #[allow(clippy::wrong_self_convention)]
@@ -37,6 +39,16 @@ macro_rules! impl_primint {
             #[inline]
             fn checked_sub(self, other: Self) -> Option<Self> {
                 <$target>::checked_sub(self, other)
+            }
+            #[inline]
+            unsafe fn unchecked_add(self, other: Self) -> Self {
+                // SAFETY: Simply delegates
+                unsafe { <$target>::unchecked_add(self, other) }
+            }
+            #[inline]
+            unsafe fn unchecked_sub(self, other: Self) -> Self {
+                // SAFETY: Simply delegates
+                unsafe { <$target>::unchecked_sub(self, other) }
             }
             #[inline]
             fn from_usize_checked(val: usize) -> Option<Self> {
