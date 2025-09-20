@@ -18,6 +18,7 @@ proc-macro = true
 syn = "2"
 quote = "1"
 proc-macro2 = "1"
+expander = { version = "2.2", optional = true }
 
 [dev-dependencies.intid]
 # Adding `intid` directly causes a circular dependency, breaking `cargo publish`.
@@ -28,6 +29,9 @@ proc-macro2 = "1"
 package = "intid-core"
 version = "0.3.0-rc.3"
 path = "../intid-core"
+
+[features]
+_internal-use-expander = ["dep:expander"]
 
 [lints]
 workspace = true

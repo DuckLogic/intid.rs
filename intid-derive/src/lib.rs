@@ -15,13 +15,38 @@ use proc_macro2::TokenStream;
 use syn::spanned::Spanned;
 use syn::{Data, DataStruct, DeriveInput, Expr, ExprLit, Fields, Lit, Member, Type};
 
+#[allow(clippy::needless_pass_by_value)]
+fn maybe_expand(input: TokenStream) -> TokenStream {
+    #[cfg(not(feature = "_internal-use-expander"))]
+    {
+        input
+    }
+    #[cfg(feature = "_internal-use-expander")]
+    {
+        let input = &input;
+        let output = quote! {
+            #[allow(clippy::undocumented_unsafe_blocks)]
+            const _: () = {
+                #input
+            };
+        };
+        let expanded = expander::Expander::new("intid")
+            .fmt(expander::Edition::_2021)
+            .verbose(true)
+            .write_to_out_dir(output)
+            .unwrap_or_else(|e| {
+                eprintln!("Failed to write to file: {e:?}");
+                input.clone()
+            });
+        expanded
+    }
+}
+
 /// See `intid` crate for docs.
 #[proc_macro_derive(IntegerIdContiguous, attributes(intid))]
 pub fn integer_id_contiguous(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
-    impl_contiguous(&ast)
-        .unwrap_or_else(syn::Error::into_compile_error)
-        .into()
+    maybe_expand(impl_contiguous(&ast).unwrap_or_else(syn::Error::into_compile_error)).into()
 }
 
 fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
@@ -51,9 +76,7 @@ fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
 #[proc_macro_derive(IntegerIdCounter, attributes(intid))]
 pub fn integer_id_counter(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
-    impl_id_counter(&ast)
-        .unwrap_or_else(syn::Error::into_compile_error)
-        .into()
+    maybe_expand(impl_id_counter(&ast).unwrap_or_else(syn::Error::into_compile_error)).into()
 }
 
 fn impl_id_counter(ast: &DeriveInput) -> syn::Result<TokenStream> {
@@ -90,9 +113,7 @@ fn impl_id_counter(ast: &DeriveInput) -> syn::Result<TokenStream> {
 #[proc_macro_derive(IntegerId, attributes(intid))]
 pub fn integer_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
-    impl_integer_id(&ast)
-        .unwrap_or_else(syn::Error::into_compile_error)
-        .into()
+    maybe_expand(impl_integer_id(&ast).unwrap_or_else(syn::Error::into_compile_error)).into()
 }
 
 // The compiler doesn't seem to know when variables are used in the macro
