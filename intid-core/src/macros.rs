@@ -31,7 +31,7 @@ macro_rules! define_newtype_counter {
     };
 }
 
-/// Defines a newtype [`IntegerId`], which wraps another  [`IntegerID`].
+/// Defines a newtype [`IntegerId`], which wraps another [`IntegerId`].
 ///
 /// Automatically derives implementations of
 ///  [`Copy`], [`Clone`], [`PartialEq`], [`Eq`], [`PartialOrd`], [`Ord`], [`Hash`], and [`Debug`].
@@ -59,40 +59,67 @@ macro_rules! define_newtype_id {
         #[repr(transparent)]
         $vis struct $name($(#[$field_attr])* $inner_vis $inner);
         impl $crate::IntegerId for $name {
-            type Int = <$inner as $crate::IntegerId>::Int;
-            const MIN_ID: Option<Self> = match <$inner as $crate::IntegerId>::MIN_ID {
-                Some(min) => Some($name(min)),
-                None => None,
-            };
-            const MAX_ID: Option<Self> = match <$inner as $crate::IntegerId>::MAX_ID {
-                Some(max) => Some($name(max)),
-                None => None,
-            };
-            const MIN_ID_INT: Option<Self::Int> = <$inner as $crate::IntegerId>::MIN_ID_INT;
-            const MAX_ID_INT: Option<Self::Int> = <$inner as $crate::IntegerId>::MAX_ID_INT;
-            const TRUSTED_RANGE: Option<$crate::trusted::TrustedRangeToken<Self>> = {
-                // SAFETY: We simply delegate, so we are safe if $inner is
-                unsafe { $crate::trusted::TrustedRangeToken::assume_valid_if::<$inner>() }
-            };
-            #[inline]
-            fn from_int(id: Self::Int) -> Self {
-                $name(<$inner as $crate::IntegerId>::from_int(id))
-            }
-            #[inline]
-            fn from_int_checked(id: Self::Int) -> Option<Self> {
-                Some($name(<$inner as $crate::IntegerId>::from_int_checked(id)?))
-            }
-            #[inline]
-            unsafe fn from_int_unchecked(id: Self::Int) -> Self {
-                $name({
-                    // SAFETY: Guaranteed by the caller
-                    unsafe { <$inner as $crate::IntegerId>::from_int_unchecked(id) }
-                })
-            }
-            #[inline]
-            fn to_int(self) -> Self::Int {
-                $crate::IntegerId::to_int(self.0)
-            }
+            $crate::impl_newtype_id_body!(for $name($inner));
+        }
+    };
+}
+
+/// Implements the body of the [`IntegerId`](crate::IntegerId) trait for a newtype struct.
+///
+/// This is similar [`define_newtype_id!`],
+/// but you have to define the type yourself,
+/// declare the `impl IntegerID for `}the
+/// and derive/implement the `Copy`, `Eq`, etc. traits.
+///
+/// The reason this only implements the body of the trait
+/// is to avoid having to parse generic parameters.
+///
+/// # Examples
+/// ```
+/// # use intid_core::{IntegerId, impl_newtype_id_body};
+///
+/// #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+/// struct Example(u32);
+/// impl IntegerId for Example {
+///     impl_newtype_id_body!(for Example(u32));
+/// }
+/// ```
+#[macro_export]
+macro_rules! impl_newtype_id_body {
+    (for $name:ident($inner:ty)) => {
+        type Int = <$inner as $crate::IntegerId>::Int;
+        const MIN_ID: Option<Self> = match <$inner as $crate::IntegerId>::MIN_ID {
+            Some(min) => Some($name(min)),
+            None => None,
+        };
+        const MAX_ID: Option<Self> = match <$inner as $crate::IntegerId>::MAX_ID {
+            Some(max) => Some($name(max)),
+            None => None,
+        };
+        const MIN_ID_INT: Option<Self::Int> = <$inner as $crate::IntegerId>::MIN_ID_INT;
+        const MAX_ID_INT: Option<Self::Int> = <$inner as $crate::IntegerId>::MAX_ID_INT;
+        const TRUSTED_RANGE: Option<$crate::trusted::TrustedRangeToken<Self>> = {
+            // SAFETY: We simply delegate, so we are safe if $inner is
+            unsafe { $crate::trusted::TrustedRangeToken::assume_valid_if::<$inner>() }
+        };
+        #[inline]
+        fn from_int(id: Self::Int) -> Self {
+            $name(<$inner as $crate::IntegerId>::from_int(id))
+        }
+        #[inline]
+        fn from_int_checked(id: Self::Int) -> Option<Self> {
+            Some($name(<$inner as $crate::IntegerId>::from_int_checked(id)?))
+        }
+        #[inline]
+        unsafe fn from_int_unchecked(id: Self::Int) -> Self {
+            $name({
+                // SAFETY: Guaranteed by the caller
+                unsafe { <$inner as $crate::IntegerId>::from_int_unchecked(id) }
+            })
+        }
+        #[inline]
+        fn to_int(self) -> Self::Int {
+            $crate::IntegerId::to_int(self.0)
         }
     };
 }
