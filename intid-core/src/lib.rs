@@ -15,6 +15,8 @@
 //!
 //! [dependency renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
 //! [serde-rs/serde#2608]: https://github.com/serde-rs/serde/pull/2608
+//! [`intid`]: https://docs.rs/intid/latest/intid
+//! [`intid_derive`]: https://docs.rs/intid-derive/latest/intid_derive
 #![no_std]
 
 use core::cmp::Ordering;

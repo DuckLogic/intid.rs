@@ -5,7 +5,7 @@
 //! It is inspired by the separation between `serde_core` and `serde` introduced in [serde-rs/serde#2608].
 //!
 //! Note that many of the use-cases of a `derive(...)` macro can be achieved just as well (or better)
-//! using the [`intid::define_newtype_id`] declarative macro.
+//! using the [`intid::define_newtype_id`](crate::define_newtype_id) declarative macro.
 //!
 //! [serde-rs/serde#2608]: https://github.com/serde-rs/serde/pull/2608
 #![no_std]
