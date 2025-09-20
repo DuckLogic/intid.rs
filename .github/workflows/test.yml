@@ -14,22 +14,9 @@ env:
 
 
 jobs:
-  shared-config:
-    outputs:
-      # TODO: We cannot use --all-features because some crates have a 'nightly' feature
-      # We use this as a workaround
-      # The question mark after intid-derive fixes ambiguity in Rust 1.65
-      all_features: "intid/__ci_all intid-allocator/__ci_all idmap/__ci_all intid-derive?/__ci_all"
-      # Enable all features and also the nightly features
-      nightly_features: "idmap/nightly"
-    runs-on: ubuntu-latest
-    steps:
-      # dummy action
-      - uses: actions/checkout@v5
   test:
     # Only run on PRs if the source branch is on someone else's repo
     if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
-    needs: shared-config
 
     runs-on: ubuntu-latest
     strategy:
@@ -54,13 +41,11 @@ jobs:
           # The most recent version of stable rust (automatically updated)
           - stable
           - nightly
-        # NOTE: Features to test must be specified manually. They are applied to all versions separately.
-        features:
-          - "" # no features
-          - ${{ needs.shared-config.outputs.all_features }} # all features
+        feature_flags:
+          - "--feature-powerset --exclude-features nightly"
         include:
           - rust: nightly
-            features: ${{ needs.shared-config.outputs.all_features }} ${{ needs.shared-config.outputs.nightly_features }}
+            feature_flags: "--feature-powerset --features nightly --ignore-unknown-features"
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@master
@@ -77,15 +62,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
         continue-on-error: false
-      - name: Test
-        # NOTE: Running --all-targets does not include doc tests
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack,cargo-nextest
+      - name: Test (${{ matrix.rust }}, ${{ matrix.feature_flags }}})
         run: |
-          cargo test --all --verbose --no-default-features --features "${{ matrix.features }}"
+          cargo hack ${{ matrix.feature_flags }} nextest run --no-tests=pass
 
   clippy:
     # Only run on PRs if the source branch is on someone else's repo
     if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
-    needs: shared-config
 
     runs-on: ubuntu-latest
     strategy:
@@ -93,16 +79,15 @@ jobs:
       matrix:
         rust:
           # in hardcoded versions, warnings will fail the build
-          - 1.89
+          - 1.90
           # in auto-updated versions, warnings will not fail the build
           - stable
           - nightly
-        features:
-          - ""
-          - ${{ needs.shared-config.outputs.all_features }}
+        feature_flags:
+          - "--feature-powerset --exclude-features nightly"
         include:
           - rust: nightly
-            features: ${{ needs.shared-config.outputs.all_features }} ${{ needs.shared-config.outputs.nightly_features }}
+            feature_flags: "--feature-powerset --features nightly --ignore-unknown-features"
 
     steps:
       - uses: actions/checkout@v5
@@ -110,39 +95,30 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           components: clippy
-      - name: Clippy
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+      - name: Clippy (${{ matrix.rust }}, ${{ matrix.feature_flags }})
         run: |
-          cargo clippy --all --all-targets --verbose --no-default-features --features "${{ matrix.features }}" -- -D warnings
+          cargo hack ${{ matrix.feature_flags }} test
         # When using hardcoded/pinned versions, warnings are forbidden.
         #
         # On automatically updated versions of rust (both stable & nightly) we allow clippy to fail.
         # This is because automatic updates can introduce new lints or change existing lints.
+        #
+        # TODO: Instead do a conversion from clippy errors -> github actions errors
         continue-on-error: ${{ !contains(matrix.rust, '1.') }}
 
   docs:
     # Only run on PRs if the source branch is on someone else's repo
     if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
-    needs: shared-config
     runs-on: ubuntu-latest
+    name: rustdoc (nightly)
     env:
       RUSTDOCFLAGS: "-D warnings"
-    strategy:
-      fail-fast: false
-      matrix:
-        rust:
-          - stable
-          - nightly
-        features:
-          # cannot run with --no-default-features since that breaks doc-links
-          - ${{ needs.shared-config.outputs.all_features }}
-        include:
-          - rust: nightly
-            features: ${{ needs.shared-config.outputs.all_features }} ${{ needs.shared-config.outputs.nightly_features }}
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
+      - uses: dtolnay/rust-toolchain@nightly
       - name: Docs
         run: |
-          cargo doc --verbose --no-default-features --features "${{ matrix.features }}"
+          cargo doc --all-features

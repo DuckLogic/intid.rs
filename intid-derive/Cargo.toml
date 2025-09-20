@@ -29,9 +29,5 @@ package = "intid-core"
 version = "0.3.0-rc.3"
 path = "../intid-core"
 
-[features]
-# doesn't do anything but added for completeness
-__ci_all = []
-
 [lints]
 workspace = true

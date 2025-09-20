@@ -17,8 +17,6 @@ nightly = []
 serde = ["dep:serde"]
 # Implement petgraph::visit::VisitMap for IdSet (petgraph v0.8)
 petgraph_0_8 = ["dep:petgraph_0_8"]
-# all features that should be enabled in CI, necessary because --all-features adds nightly
-__ci_all = ["serde", "petgraph_0_8"]
 
 [dependencies]
 # Defines the IntegerId trait

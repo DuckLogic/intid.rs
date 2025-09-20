@@ -25,8 +25,6 @@ num-traits = ["intid-core/num-traits"]
 nonmax = ["intid-core/nonmax"]
 # integration with bytemuck
 bytemuck = ["intid-core/bytemuck"]
-# all features to test in CI (excludes `nightly`)
-__ci_all = ["derive", "intid-core/__ci_all"]
 
 [lints]
 workspace = true

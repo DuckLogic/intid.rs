@@ -24,8 +24,6 @@ num-traits = ["dep:num-traits"]
 nonmax = ["dep:nonmax"]
 # integration with bytemuck
 bytemuck = ["dep:bytemuck"]
-# all features to test in CI (excludes `nightly`)
-__ci_all = ["num-traits", "nonmax", "bytemuck"]
 
 [lints]
 workspace = true
