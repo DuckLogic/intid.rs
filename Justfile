@@ -1,9 +1,11 @@
+ALL_FEATURES := "idmap/nightly,idmap/serde,idmap/petgraph_0_8,intid/num-traits,intid/nonmax,intid/bytemuck"
+
 check: && check-format
-    cargo +nightly clippy --all-targets --all-features
-    cargo +nightly doc --no-deps --all-features
+    cargo +nightly clippy --all-targets --features {{ ALL_FEATURES }}
+    cargo +nightly doc --no-deps --features {{ ALL_FEATURES }}
 
 test: check
-    cargo +nightly nextest run --all-features
+    cargo +nightly nextest run --features {{ ALL_FEATURES }}
 
 test-full: test
     cargo +nightly test-all-features
