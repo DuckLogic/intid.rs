@@ -30,7 +30,7 @@ rustversion = "1"
 
 [dependencies.intid]
 package = "intid-core"
-version = "0.3.0-rc.3"
+version = "0.3.0"
 path = "../intid-core"
 
 [features]

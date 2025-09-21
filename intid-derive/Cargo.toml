@@ -27,7 +27,7 @@ expander = { version = "2.2", optional = true }
 #
 # NOTE: The renaming doesn't interact well with workspace inheritence here
 package = "intid-core"
-version = "0.3.0-rc.3"
+version = "0.3.0"
 path = "../intid-core"
 
 [features]
