@@ -2,6 +2,7 @@ pub trait PrivateUnsignedInt: Sized {
     const ZERO: Self;
     const ONE: Self;
     const MAX: Self;
+    fn checked_cast<U: super::UnsignedPrimInt>(self) -> Option<U>;
     /// The type name as a short unqualified string.
     const TYPE_NAME: &'static str;
     fn checked_add(self, other: Self) -> Option<Self>;
@@ -16,6 +17,7 @@ pub trait PrivateUnsignedInt: Sized {
 macro_rules! impl_primint {
     ($($target:ident),*) => ($(
         impl super::UnsignedPrimInt for $target {}
+        impl super::ConvertPrimInts for $target {}
         impl PrivateUnsignedInt for $target {
             const TYPE_NAME: &'static str = stringify!($target);
             const ZERO: Self = {
@@ -24,6 +26,10 @@ macro_rules! impl_primint {
             };
             const ONE: Self = 1;
             const MAX: Self = $target::MAX;
+            #[inline]
+            fn checked_cast<U: super::UnsignedPrimInt>(self) -> Option<U> {
+                U::try_from(self).ok()
+            }
             #[inline]
             fn checked_add(self, other: Self) -> Option<Self> {
                 <$target>::checked_add(self, other)

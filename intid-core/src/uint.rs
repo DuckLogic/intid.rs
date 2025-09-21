@@ -19,6 +19,23 @@ maybe_trait_bound!(
     cfg(feature = "bytemuck"),
     bytemuck::Contiguous
 );
+#[doc(hidden)]
+pub trait ConvertPrimInts:
+    From<u8>
+    + TryFrom<u8>
+    + TryFrom<u16>
+    + TryFrom<u32>
+    + TryFrom<u64>
+    + TryFrom<u128>
+    + TryFrom<usize>
+    + TryInto<u8>
+    + TryInto<u16>
+    + TryFrom<u32>
+    + TryFrom<u64>
+    + TryInto<u128>
+    + TryInto<usize>
+{
+}
 
 /// An unsigned primitive integer.
 ///
@@ -34,11 +51,19 @@ pub trait UnsignedPrimInt:
     + Default
     + Debug
     + Display
+    + ConvertPrimInts
     + sealed::PrivateUnsignedInt
     + MaybeNumTrait
     + MaybePod
     + MaybeContiguous
 {
+}
+
+/// Cast from one [`UnsignedPrimInt`] into another,
+/// returning `None` if there is overflow.
+#[inline]
+pub fn checked_cast<T: UnsignedPrimInt, U>(value: T) -> Option<T> {
+    sealed::PrivateUnsignedInt::checked_cast(value)
 }
 
 /// Add the specified value to the integer,
