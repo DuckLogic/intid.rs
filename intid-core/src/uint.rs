@@ -5,6 +5,7 @@
 
 use core::fmt::{Debug, Display, Formatter};
 use core::hash::Hash;
+use core::ops::{Add, Div, Mul, Sub};
 
 mod sealed;
 
@@ -56,7 +57,34 @@ pub trait UnsignedPrimInt:
     + MaybeNumTrait
     + MaybePod
     + MaybeContiguous
+    + Add<Output=Self>
+    + Sub<Output=Self>
+    + Mul<Output=Self>
+    + Div<Output=Self>
 {
+}
+
+/// Subtract the specified value from the integer,
+/// triggering UB if the subtraction overflows.
+///
+/// # Safety
+/// Undefined behavior if the subtraction overflows.
+#[inline]
+pub unsafe fn unchecked_sub<T: UnsignedPrimInt>(left: T, right: T) -> T {
+    // SAFETY: Delegates responsibility
+    unsafe { sealed::PrivateUnsignedInt::unchecked_sub(left, right) }
+}
+
+
+/// Add the specified values,
+/// triggering UB if the addition overflows.
+///
+/// # Safety
+/// Undefined behavior if the addition overflows.
+#[inline]
+pub unsafe fn unchecked_add<T: UnsignedPrimInt>(left: T, right: T) -> T {
+    // SAFETY: Delegates responsibility
+    unsafe { sealed::PrivateUnsignedInt::unchecked_add(left, right) }
 }
 
 /// Cast from one [`UnsignedPrimInt`] into another,

@@ -67,3 +67,12 @@ impl<T: IntegerId> TrustedRangeToken<T> {
         }
     }
 }
+
+/*
+/// Indicates
+pub struct TrustedContiguousToken<T> {
+
+}
+impl<T: IntegerId> TrustedContiguousToken<T> {
+}
+*/
