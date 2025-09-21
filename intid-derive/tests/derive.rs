@@ -15,10 +15,14 @@ pub struct Plain(u64);
 )]
 pub struct Counter(u32);
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, intid_derive::IntegerId)]
+enum Void {}
+
 #[test]
 fn verify_derive() {
     assert_id::<Letter>();
     assert_id::<Plain>();
+    assert_id::<Void>();
     assert_counter::<Counter>();
 }
 

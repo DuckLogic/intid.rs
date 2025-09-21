@@ -310,11 +310,11 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                 .variants
                 .iter()
                 .map(|x| quote!(#name::#x))
-                .reduce(|a, b| quote!(select(#a, #b)))
-                .unwrap();
+                .reduce(|a, b| quote!(select(#a, #b)));
             let select_max = select_method(quote!(>));
             let select_min = select_method(quote!(<));
             let [min_id, max_id] = if inhabited {
+                let do_select = do_select.unwrap();
                 [select_min, select_max].map(|select_impl| {
                     quote!(Some({
                         #select_impl
@@ -349,6 +349,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                         };
 
                         #[inline]
+                        #[allow(unreachable_code)]
                         fn from_int_checked(x: #int_type) -> Option<Self> {
                             // NOTE: Works assuming that x fits in u64
                             // Needed since the literals in variant_matches have to have a concrete type
@@ -362,6 +363,7 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                         }
 
                         #[inline]
+                        #[allow(unreachable_code)]
                         unsafe fn from_int_unchecked(x: #int_type) -> Self {
                             match u64::from(x) {
                                 #(#variant_matches,)*
