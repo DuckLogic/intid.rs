@@ -19,11 +19,14 @@
 //! [`intid_derive`]: https://docs.rs/intid-derive/latest/intid_derive
 #![no_std]
 #![cfg_attr(feature = "nightly", feature(never_type,))]
+extern crate alloc;
 
 use core::fmt::Debug;
 
 #[macro_use]
 mod macros;
+#[doc(hidden)]
+pub mod array;
 mod impls;
 pub mod trusted;
 pub mod uint;
@@ -212,6 +215,37 @@ pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
     fn checked_sub(this: Self, offset: Self::Int) -> Option<Self> {
         uint::checked_sub(this.to_int(), offset).and_then(Self::from_int_checked)
     }
+}
+
+/// An [`IntegerId`] which are limited to small set of values.
+///
+/// As the name suggests, it is most useful for C-style enums,
+/// and allows using enums as keys for inline map/sets without allocation.
+/// Is not implemented for types like `u32` where inline storage
+/// would require inordinate amounts of space.
+///
+/// All valid indexes and the total [`Self::COUNT`] must fit in a [`u32`] and a [`usize`].
+pub trait EnumId: IntegerId {
+    /// The total number of valid values.
+    const COUNT: u32;
+    /// A builtin array of `[T; {Self::MAX_ID_INT + 1}]`.
+    ///
+    /// Necessary to work around the current (Rust 1.90) restrictions on const generics
+    ///
+    /// # Safety
+    /// Since the [`array::Array`] trait is sealed,
+    /// this is guaranteed to be a builtin array of type `T`.
+    /// Since this is a safe trait, the length could be any value.
+    /// However, that is easily checked using a const assertion.
+    type Array<T>: array::Array<T>;
+    /// An array of words, whose bits can store all valid ids.
+    ///
+    /// Necessary to work around the current (Rust 1.90) restrictions on const generics.
+    ///
+    /// # Safety
+    /// Has similar safety guarantees as [`Self::Array`].
+    /// The type is correct, but the length must be checked with a const assertion.
+    type BitSet: array::Array<array::BitsetLimb>;
 }
 
 /// A type that can be for lookup as an [`IntegerId`].
