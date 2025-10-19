@@ -70,4 +70,5 @@ ptr_as_ptr = "allow" # pointer casts are fine as long as they don't violate anot
 too-many-lines = "allow"
 # We don't put #[must_use] on len
 must-use-candidate = "allow"
+return_self_not_must_use = "allow"
 items-after-statements = "allow"

@@ -227,7 +227,8 @@ pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
 /// All valid indexes and the total [`Self::COUNT`] must fit in a [`u32`] and a [`usize`].
 ///
 /// Note that this does *not* imply [`IntegerIdContiguous`],
-/// so not all be integers below [`Self::MAX_ID_INT`] are valid.
+/// so not all be integers below [`Self::MAX_ID_INT`](IntegerId::MAX_ID_INT)
+/// are guaranteed to be valid.
 pub trait EnumId: IntegerId {
     /// The total number of valid values.
     const COUNT: u32;

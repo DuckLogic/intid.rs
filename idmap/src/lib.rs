@@ -10,7 +10,9 @@
 extern crate alloc;
 
 pub mod direct;
+pub mod enums;
 
 pub extern crate intid;
 
 pub use self::direct::{DirectIdMap, DirectIdSet};
+pub use self::enums::EnumMap;

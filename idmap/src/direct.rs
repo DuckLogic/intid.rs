@@ -2,7 +2,7 @@
 //!
 //! This is roughly equivalent to a `Vec<Option<T>>` for the map and bitset for the set.
 
-mod macros;
+pub(crate) mod macros;
 pub mod map;
 #[cfg(feature = "serde")]
 mod serde;

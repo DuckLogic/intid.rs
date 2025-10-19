@@ -12,6 +12,8 @@ categories = ["data-structures", "rust-patterns"]
 keywords = ["idmap", "table", "id", "array", "map"]
 
 [features]
+std = []
+alloc = []
 nightly = []
 # Support serde serialization
 serde = ["dep:serde"]
