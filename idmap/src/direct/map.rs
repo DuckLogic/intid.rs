@@ -321,6 +321,7 @@ macro_rules! impl_direct_iter {
                             let $k = unsafe {
                                 $kt::from_int_unchecked(intid::uint::from_usize_wrapping(index))
                             };
+                            self.len -= 1;
                             return Some($map)
                         },
                         Some((_, None)) => continue,
