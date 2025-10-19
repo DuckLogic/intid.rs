@@ -1,5 +1,6 @@
 //! Implements [`DirectIdMap`], a thin wrapper over a [`Vec<Option<T>>`].
 
+use super::macros::impl_direct_map_iter;
 use crate::direct::oom_id;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Formatter};
@@ -281,59 +282,7 @@ impl<K: IntegerId, V: Debug> Debug for DirectIdMap<K, V> {
         f.debug_map().entries(self.iter()).finish()
     }
 }
-macro_rules! impl_direct_iter {
-    ($target:ident<$($l:lifetime,)? $kt:ident, $vt:ident> {
-        fn map($k:ident, $v:ident) -> $item_ty:ty {
-            $map:expr
-        }
-    }) => {
-        impl<$($l,)* $kt: IntegerId, $vt> Iterator for $target<$($l,)* $kt, $vt> {
-            type Item = $item_ty;
-            #[inline]
-            fn next(&mut self) -> Option<Self::Item> {
-                loop {
-                    match self.source.next() {
-                        Some((index, Some($v))) => {
-                            // SAFETY: Value exists => index is valid
-                            let $k = unsafe {
-                                $kt::from_int_unchecked(intid::uint::from_usize_wrapping(index))
-                            };
-                            self.len -= 1;
-                            return Some($map)
-                        },
-                        Some((_, None)) => continue,
-                        None => return None,
-                    }
-                }
-            }
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                (self.len, Some(self.len))
-            }
-        }
-        impl<$($l,)* $kt: IntegerId, $vt> DoubleEndedIterator for $target<$($l,)* $kt, $vt> {
-            #[inline]
-            fn next_back(&mut self) -> Option<Self::Item> {
-                loop {
-                    match self.source.next_back() {
-                        Some((index, Some($v))) => {
-                            // SAFETY: Value exists => index is valid
-                            let $k = unsafe {
-                                $kt::from_int_unchecked(intid::uint::from_usize_wrapping(index))
-                            };
-                            self.len -= 1;
-                            return Some($map)
-                        },
-                        Some((_, None)) => continue,
-                        None => return None,
-                    }
-                }
-            }
-        }
-        impl<$($l,)* $kt: IntegerId, $vt> ExactSizeIterator for $target<$($l,)* $kt, $vt> {}
-        impl<$($l,)* $kt: IntegerId, $vt> core::iter::FusedIterator for $target<$($l,)* $kt, $vt> {}
-    }
-}
+
 /// An iterator consuming the entries in a [`DirectIdMap`]/
 ///
 /// Guaranteed to be ordered by the integer value of the key.
@@ -342,7 +291,7 @@ pub struct IntoIter<K: IntegerId, V> {
     len: usize,
     marker: PhantomData<K>,
 }
-impl_direct_iter!(IntoIter<K, V> {
+impl_direct_map_iter!(IntoIter<K: IntegerId, V> {
     fn map(key, value) -> (K, V) {
         (key, value)
     }
@@ -355,7 +304,7 @@ pub struct Iter<'a, K: IntegerId, V> {
     len: usize,
     marker: PhantomData<K>,
 }
-impl_direct_iter!(Iter<'a, K, V> {
+impl_direct_map_iter!(Iter<'a, K: IntegerId, V> {
     fn map(key, value) -> (K, &'a V) {
         (key, value)
     }
@@ -369,7 +318,7 @@ pub struct IterMut<'a, K: IntegerId, V> {
     len: usize,
     marker: PhantomData<K>,
 }
-impl_direct_iter!(IterMut<'a, K, V> {
+impl_direct_map_iter!(IterMut<'a, K: IntegerId, V> {
     fn map(key, value) -> (K, &'a mut V) {
         (key, value)
     }
@@ -383,7 +332,7 @@ pub struct Values<'a, K: IntegerId, V> {
     len: usize,
     marker: PhantomData<K>,
 }
-impl_direct_iter!(Values<'a, K, V> {
+impl_direct_map_iter!(Values<'a, K: IntegerId, V> {
     fn map(_key, value) -> &'a V {
         value
     }
@@ -397,7 +346,7 @@ pub struct ValuesMut<'a, K: IntegerId, V> {
     len: usize,
     marker: PhantomData<K>,
 }
-impl_direct_iter!(ValuesMut<'a, K, V> {
+impl_direct_map_iter!(ValuesMut<'a, K: IntegerId, V> {
     fn map(_key, value) -> &'a mut V {
         value
     }
@@ -411,7 +360,7 @@ pub struct Keys<'a, K: IntegerId, V> {
     len: usize,
     marker: PhantomData<K>,
 }
-impl_direct_iter!(Keys<'a, K, V> {
+impl_direct_map_iter!(Keys<'a, K: IntegerId, V> {
     fn map(key, _value) -> K {
         key
     }

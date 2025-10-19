@@ -14,6 +14,7 @@ use core::marker::PhantomData;
 use core::ops::Index;
 use iter::FusedIterator;
 
+use crate::direct::macros::impl_direct_set_iter;
 use fixedbitset::{FixedBitSet, Ones};
 use intid::{EquivalentId, IntegerId};
 
@@ -292,57 +293,6 @@ impl<T: IntegerId + Ord> Ord for DirectIdSet<T> {
     }
 }
 
-macro_rules! do_impl_iter {
-    ($target:ident$(<$lt:lifetime>)?) => {
-        impl<T: IntegerId> Iterator for $target<$($lt,)* T> {
-            type Item = T;
-
-            #[inline]
-            fn next(&mut self) -> Option<Self::Item> {
-                match self.handle.next() {
-                    Some(index) => {
-                        self.len -= 1;
-                        // SAFETY: Id is present => id is valid
-                        Some(unsafe { T::from_int_unchecked(intid::uint::from_usize_wrapping(index)) })
-                    }
-                    None => {
-                        debug_assert_eq!(self.len, 0);
-                        None
-                    }
-                }
-            }
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                (self.len, Some(self.len))
-            }
-            #[inline]
-            fn count(self) -> usize
-            where
-                Self: Sized,
-            {
-                self.len
-            }
-        }
-        impl<T: IntegerId> DoubleEndedIterator for $target<$($lt,)* T> {
-            #[inline]
-            fn next_back(&mut self) -> Option<Self::Item> {
-                match self.handle.next_back() {
-                    Some(index) => {
-                        self.len -= 1;
-                        // SAFETY: Id is present => id is valid
-                        Some(unsafe { T::from_int_unchecked(intid::uint::from_usize_wrapping(index)) })
-                    }
-                    None => {
-                        debug_assert_eq!(self.len, 0);
-                        None
-                    }
-                }
-            }
-        }
-        impl<T: IntegerId> ExactSizeIterator for $target<$($lt,)* T> {}
-        impl<T: IntegerId> FusedIterator for $target<$($lt,)* T> {}
-    };
-}
 /// An iterator over the values in an [`DirectIdSet]`.
 ///
 /// TODO: Cannot implement `Clone` because [`fixedbitset::Ones`] doesn't support it yet.
@@ -354,7 +304,7 @@ pub struct Iter<'a, T: IntegerId> {
     handle: Ones<'a>,
     marker: PhantomData<T>,
 }
-do_impl_iter!(Iter<'_>);
+impl_direct_set_iter!(Iter<'a, K: IntegerId>);
 
 /// An iterator over the values in an [`DirectIdSet`],
 /// consuming ownership the set.
@@ -365,7 +315,7 @@ pub struct IntoIter<T: IntegerId> {
     len: usize,
     marker: PhantomData<T>,
 }
-do_impl_iter!(IntoIter);
+impl_direct_set_iter!(IntoIter<K: IntegerId>);
 
 #[cfg(feature = "petgraph_0_8")]
 impl<T: IntegerId> petgraph_0_8::visit::VisitMap<T> for DirectIdSet<T> {
