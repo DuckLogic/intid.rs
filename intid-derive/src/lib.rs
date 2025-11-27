@@ -36,7 +36,10 @@ fn maybe_expand(input: TokenStream, name: &str) -> TokenStream {
         };
         let input = &input;
         let output = quote! {
-            #input
+            #[allow(clippy::undocumented_unsafe_blocks)]
+            const _: () = {
+                #input
+            };
         };
         // fixes a bug with unit tests conflicting with integration tests
         let expanded = expander::Expander::new(format!("{name}-{random:X}"))
