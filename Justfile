@@ -6,10 +6,10 @@ check: && check-format
 
 test: check
     cargo +nightly nextest run --all-features
+    cargo +stable nextest run --features {{ ALL_STABLE_FEATURES }}
 
-test-full: test
+test-exhaustive: test
     cargo +nightly test-all-features
-    cargo +stable test --features {{ ALL_STABLE_FEATURES }}
 
 format:
     cargo fmt --all
