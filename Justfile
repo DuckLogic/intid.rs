@@ -3,10 +3,14 @@ ALL_STABLE_FEATURES := "idmap/serde,idmap/petgraph_0_8,intid/num-traits,intid/no
 check: && check-format
     cargo +nightly clippy --all-targets --all-features
     cargo +nightly doc --no-deps --all-features
+    # Checking MSRV
+    cargo +1.65 check --all-targets --features {{ ALL_STABLE_FEATURES }}
 
 test: check
     cargo +nightly nextest run --all-features
     cargo +stable nextest run --features {{ ALL_STABLE_FEATURES }}
+    # Testing MSRV
+    cargo +1.65 nextest run --features {{ ALL_STABLE_FEATURES }}
 
 test-exhaustive: test
     cargo +nightly test-all-features
