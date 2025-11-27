@@ -11,9 +11,12 @@ test: check
     cargo +stable nextest run --features {{ ALL_STABLE_FEATURES }}
     # Testing MSRV
     cargo +1.65 nextest run --features {{ ALL_STABLE_FEATURES }}
+    # Test that things work with the expander
+    RUSTFLAGS="--cfg intid_derive_use_expander" cargo +nightly nextest run --all-features
+
 
 test-exhaustive: test
-    cargo +nightly test-all-features
+    cargo +nightly all-features nextest run --no-tests=warn
 
 format:
     cargo fmt --all

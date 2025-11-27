@@ -17,18 +17,23 @@ use syn::{Data, DataStruct, DeriveInput, Expr, ExprLit, Fields, Lit, Member, Typ
 #[allow(clippy::needless_pass_by_value)]
 fn maybe_expand(input: TokenStream, name: &str) -> TokenStream {
     let _ = name;
-    #[cfg(not(intid_derive_use_expander))]
+    #[cfg(not(feature = "expander"))]
     {
+        #[cfg(intid_derive_use_expander)]
+        {
+            compile_error!(
+                "Enabled `cfg(intid_derive_use_expander)`, but missing 'expander' feature"
+            )
+        }
         input
     }
-    #[cfg(all(intid_derive_use_expander, not(feature = "expander")))]
+    #[cfg(feature = "expander")]
     {
-        compile_error!("Enabled `cfg(intid_derive_use_expander)`, but missing 'expander' feature")
-    }
-    #[cfg(all(intid_derive_use_expander, feature = "expander"))]
-    {
-        use std::hash::{BuildHasher, RandomState};
-        let random = RandomState::new().hash_one(());
+        let random: u64 = {
+            use core::hash::{BuildHasher, Hasher};
+            use std::hash::RandomState;
+            RandomState::new().build_hasher().finish()
+        };
         let input = &input;
         let output = quote! {
             #input
@@ -37,6 +42,9 @@ fn maybe_expand(input: TokenStream, name: &str) -> TokenStream {
         let expanded = expander::Expander::new(format!("{name}-{random:X}"))
             .fmt(expander::Edition::_2021)
             .verbose(true)
+            // It would be nice to use an environment variable here,
+            // but that would require `proc_macro::tracked_env`
+            .dry(cfg!(not(intid_derive_use_expander)))
             .write_to_out_dir(output)
             .unwrap_or_else(|e| {
                 eprintln!("Failed to write to file: {e:?}");
