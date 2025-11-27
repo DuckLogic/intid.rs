@@ -7,7 +7,6 @@
 
 use core::fmt::{Display, Formatter, Write};
 use core::str::FromStr;
-
 use proc_macro2::{Ident, Span};
 use quote::{quote, quote_spanned};
 
@@ -16,21 +15,26 @@ use syn::spanned::Spanned;
 use syn::{Data, DataStruct, DeriveInput, Expr, ExprLit, Fields, Lit, Member, Type};
 
 #[allow(clippy::needless_pass_by_value)]
-fn maybe_expand(input: TokenStream) -> TokenStream {
-    #[cfg(not(feature = "_internal-use-expander"))]
+fn maybe_expand(input: TokenStream, name: &str) -> TokenStream {
+    let _ = name;
+    #[cfg(not(intid_derive_use_expander))]
     {
         input
     }
-    #[cfg(feature = "_internal-use-expander")]
+    #[cfg(all(intid_derive_use_expander, not(feature = "expander")))]
     {
+        compile_error!("Enabled `cfg(intid_derive_use_expander)`, but missing 'expander' feature")
+    }
+    #[cfg(all(intid_derive_use_expander, feature = "expander"))]
+    {
+        use std::hash::{BuildHasher, RandomState};
+        let random = RandomState::new().hash_one(());
         let input = &input;
         let output = quote! {
-            #[allow(clippy::undocumented_unsafe_blocks)]
-            const _: () = {
-                #input
-            };
+            #input
         };
-        let expanded = expander::Expander::new("intid")
+        // fixes a bug with unit tests conflicting with integration tests
+        let expanded = expander::Expander::new(format!("{name}-{random:X}"))
             .fmt(expander::Edition::_2021)
             .verbose(true)
             .write_to_out_dir(output)
@@ -46,7 +50,11 @@ fn maybe_expand(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(IntegerIdContiguous, attributes(intid))]
 pub fn integer_id_contiguous(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
-    maybe_expand(impl_contiguous(&ast).unwrap_or_else(syn::Error::into_compile_error)).into()
+    maybe_expand(
+        impl_contiguous(&ast).unwrap_or_else(syn::Error::into_compile_error),
+        "IntegerIdContiguous",
+    )
+    .into()
 }
 
 fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
@@ -76,7 +84,11 @@ fn impl_contiguous(ast: &DeriveInput) -> syn::Result<TokenStream> {
 #[proc_macro_derive(IntegerIdCounter, attributes(intid))]
 pub fn integer_id_counter(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
-    maybe_expand(impl_id_counter(&ast).unwrap_or_else(syn::Error::into_compile_error)).into()
+    maybe_expand(
+        impl_id_counter(&ast).unwrap_or_else(syn::Error::into_compile_error),
+        "IntegerIdCounter",
+    )
+    .into()
 }
 
 fn impl_id_counter(ast: &DeriveInput) -> syn::Result<TokenStream> {
@@ -113,7 +125,11 @@ fn impl_id_counter(ast: &DeriveInput) -> syn::Result<TokenStream> {
 #[proc_macro_derive(IntegerId, attributes(intid))]
 pub fn integer_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
-    maybe_expand(impl_integer_id(&ast).unwrap_or_else(syn::Error::into_compile_error)).into()
+    maybe_expand(
+        impl_integer_id(&ast).unwrap_or_else(syn::Error::into_compile_error),
+        "IntegerId",
+    )
+    .into()
 }
 
 // The compiler doesn't seem to know when variables are used in the macro

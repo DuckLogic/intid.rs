@@ -28,6 +28,12 @@ intid = { path  = "intid", version = "0.3.0" }
 missing-docs = "deny"
 unsafe-op-in-unsafe-fn = "deny"
 
+[workspace.lints.rust.unexpected_cfgs]
+level = "warn"
+# NOTE: Cannot restict this to derive crate,
+# because you cannot selectively override `lints.workspace = true`
+check-cfg = ['cfg(intid_derive_use_expander)']
+
 [workspace.lints.clippy]
 ## groups ##
 cargo = { priority = -1, level = "warn" }

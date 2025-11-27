@@ -23,15 +23,12 @@ expander = { version = "2.2", optional = true }
 [dev-dependencies.intid]
 # Adding `intid` directly causes a circular dependency, breaking `cargo publish`.
 # Adding `intid_core` directly isn't helpful since the macros all refer to `intid`.
-# However, if we we do a renaming here then things work out fine
+# However, if we do a renaming here then things work out fine
 #
 # NOTE: The renaming doesn't interact well with workspace inheritence here
 package = "intid-core"
 version = "0.3.0"
 path = "../intid-core"
-
-[features]
-_internal-use-expander = ["dep:expander"]
 
 [lints]
 workspace = true
