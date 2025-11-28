@@ -2,9 +2,11 @@ use core::fmt::{Display, Formatter, Write};
 use core::str::FromStr;
 
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{quote_spanned, ToTokens, TokenStreamExt};
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::spanned::Spanned;
-use syn::{Data, DataEnum, DeriveInput, Expr, ExprLit, Fields, Lit, Member, Type, Variant};
+use syn::{
+    Data, DataEnum, DataStruct, DeriveInput, Expr, ExprLit, Fields, Lit, Member, Type, Variant,
+};
 
 macro_rules! define_target_traits {
     ($($target:ident),+ $(,)?) => {
@@ -35,7 +37,7 @@ macro_rules! define_target_traits {
         }
     };
 }
-define_target_traits!(IntegerId, IntegerIdContiguous, IntegerIdCounter);
+define_target_traits!(IntegerId, IntegerIdContiguous, IntegerIdCounter, EnumId);
 
 pub fn analyze(
     ast: &DeriveInput,
@@ -57,6 +59,7 @@ pub fn analyze(
                         .map_or_else(|| Member::from(0), Member::from);
                     let field_type = &field.ty;
                     Ok(AnalyzedType::NewType(AnalyzedNewType {
+                        data,
                         wrapped_field_type: field_type,
                         wrapped_field_name: field_name,
                         common,
@@ -174,9 +177,20 @@ impl AnalyzedType<'_> {
             )),
         }
     }
+    pub fn ensure_only_enum(&self) -> syn::Result<&'_ AnalyzedEnum<'_>> {
+        let trait_name = self.common().target;
+        match self {
+            AnalyzedType::Enum(ref tp) => Ok(tp),
+            AnalyzedType::NewType(ref tp) => Err(syn::Error::new_spanned(
+                tp.data.struct_token,
+                format!("Deriving {trait_name} is not currently supported for structs"),
+            )),
+        }
+    }
 }
 pub struct AnalyzedNewType<'a> {
     pub common: CommonTypeInfo<'a>,
+    pub data: &'a DataStruct,
     pub wrapped_field_name: Member,
     pub wrapped_field_type: &'a Type,
 }
@@ -210,6 +224,66 @@ pub struct AnalyzedEnum<'a> {
 impl AnalyzedEnum<'_> {
     pub fn is_inhabited(&self) -> bool {
         !self.variants.is_empty()
+    }
+    /// Determine the variants of this enum with the minimum and maximum id.
+    ///
+    /// This has of type `Self`, not of an integer
+    pub fn determine_id_bounds(&self) -> Result<EnumIdBounds, UninhabitedEnumError> {
+        let name = &self.common.input.ident;
+        let int_type = self.discriminant_type;
+        let select_method = |cmp: TokenStream| {
+            quote! {
+                const fn select(
+                    a: #name,
+                    b: #name,
+                ) -> #name {
+                    if (a as #int_type) #cmp (b as #int_type) {
+                        a
+                    } else if (b as #int_type) #cmp (a as #int_type) {
+                        b
+                    } else {
+                        panic!("internal error: detected conflicting enum ids")
+                    }
+                }
+            }
+        };
+        let do_select = self
+            .variants
+            .iter()
+            .map(|x| {
+                let variant_name = x.name();
+                quote!(#name::#variant_name)
+            })
+            .reduce(|a, b| quote!(select(#a, #b)));
+        let select_max = select_method(quote!(>));
+        let select_min = select_method(quote!(<));
+        if self.is_inhabited() {
+            let do_select = do_select.unwrap();
+            let [min_id, max_id] = [select_min, select_max].map(|select_impl| {
+                quote!({
+                    #select_impl
+                    #do_select
+                })
+            });
+            Ok(EnumIdBounds { min_id, max_id })
+        } else {
+            Err(UninhabitedEnumError)
+        }
+    }
+}
+#[derive(Clone, Debug)]
+pub struct UninhabitedEnumError;
+#[derive(Debug)]
+pub struct EnumIdBounds<T = TokenStream> {
+    pub min_id: T,
+    pub max_id: T,
+}
+impl<T> EnumIdBounds<T> {
+    pub fn map<U>(self, mut func: impl FnMut(T) -> U) -> EnumIdBounds<U> {
+        EnumIdBounds {
+            min_id: func(self.min_id),
+            max_id: func(self.max_id),
+        }
     }
 }
 pub struct AnalyzedVariant<'a> {

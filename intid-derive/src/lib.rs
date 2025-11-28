@@ -5,12 +5,11 @@
 //! In the `idmap` crate, the derive feature is on by default.
 #![allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 
+use crate::analyze::{analyze, AnalyzedType, EnumIdBounds, TargetTrait, UninhabitedEnumError};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::DeriveInput;
-
-use crate::analyze::{analyze, AnalyzedType, TargetTrait};
 
 mod analyze;
 
@@ -36,7 +35,7 @@ fn maybe_expand(input: TokenStream, name: &str) -> TokenStream {
         };
         let input = &input;
         let output = quote! {
-            #[allow(clippy::undocumented_unsafe_blocks)]
+            #[allow(clippy::undocumented_unsafe_blocks, unused_parens)]
             const _: () = {
                 #input
             };
@@ -244,42 +243,12 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
                 })
                 .collect::<Vec<_>>();
             let int_type = tp.discriminant_type;
-            let select_method = |cmp: TokenStream| {
-                quote! {
-                    const fn select(
-                        a: #name,
-                        b: #name,
-                    ) -> #name {
-                        if (a as #int_type) #cmp (b as #int_type) {
-                            a
-                        } else if (b as #int_type) #cmp (a as #int_type) {
-                            b
-                        } else {
-                            panic!("internal error: detected conflicting enum ids")
-                        }
-                    }
-                }
-            };
-            let do_select = tp
-                .variants
-                .iter()
-                .map(|x| {
-                    let variant_name = x.name();
-                    quote!(#name::#variant_name)
-                })
-                .reduce(|a, b| quote!(select(#a, #b)));
-            let select_max = select_method(quote!(>));
-            let select_min = select_method(quote!(<));
-            let [min_id, max_id] = if tp.is_inhabited() {
-                let do_select = do_select.unwrap();
-                [select_min, select_max].map(|select_impl| {
-                    quote!(Some({
-                        #select_impl
-                        #do_select
-                    }))
-                })
-            } else {
-                [quote!(None), quote!(None)]
+            let EnumIdBounds { min_id, max_id } = match tp.determine_id_bounds() {
+                Ok(bounds) => bounds.map(|src| quote!(Some(#src))),
+                Err(UninhabitedEnumError) => EnumIdBounds {
+                    min_id: quote!(None),
+                    max_id: quote!(None),
+                },
             };
             Ok(quote! {
                 impl intid::IntegerId for #name {
@@ -334,6 +303,57 @@ fn impl_integer_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
             })
         }
     }
+}
+
+/// See the documentation in the `intid` crate for details.
+#[proc_macro_derive(EnumId, attributes(intid))]
+pub fn enum_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse(input).unwrap();
+    maybe_expand(
+        impl_enum_id(&ast).unwrap_or_else(syn::Error::into_compile_error),
+        "EnumId",
+    )
+    .into()
+}
+
+fn impl_enum_id(ast: &DeriveInput) -> syn::Result<TokenStream> {
+    let _options = parse_options(ast);
+    let name = &ast.ident;
+    const TARGET_TRAIT: TargetTrait = TargetTrait::EnumId;
+    let analyzed = analyze::analyze(ast, TARGET_TRAIT)?;
+    let analyzed = analyzed.ensure_only_enum()?;
+    let EnumIdBounds { min_id: _, max_id } = match analyzed.determine_id_bounds() {
+        Ok(res) => res.map(Some),
+        Err(UninhabitedEnumError) => EnumIdBounds {
+            min_id: None,
+            max_id: None,
+        },
+    };
+    let upper_bound = max_id.map_or_else(|| quote!(0), |max_id| quote!(#max_id as usize + 1));
+    const BITSET_LIMB_SIZE: u32 = u64::BITS;
+    let verify_bitset_limbs = {
+        assert_eq!(BITSET_LIMB_SIZE, u64::BITS);
+        quote! {
+            const _: () = {
+                const fn assert_type_bitset_limbs(_x: intid::array::BitsetLimb) {}
+                assert_type_bitset_limbs(0u64)
+            };
+        }
+    };
+    fn divide_round_up(num: &TokenStream, denom: &TokenStream) -> TokenStream {
+        let denom = denom.clone();
+        quote! {(((#num) + ((#denom) - 1)) / (#denom))}
+    }
+    let bitset_upper_bound = divide_round_up(&upper_bound, &quote!(#BITSET_LIMB_SIZE as usize));
+    let count = analyzed.variants.len();
+    Ok(quote! {
+        impl intid::EnumId for #name {
+            const COUNT: u32 = #count as u32;
+            type Array<T> = [T; #upper_bound];
+            type BitSet = [u64; #bitset_upper_bound];
+        }
+        #verify_bitset_limbs
+    })
 }
 
 fn parse_options(ast: &DeriveInput) -> syn::Result<MainOptions> {

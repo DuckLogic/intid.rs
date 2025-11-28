@@ -3,8 +3,9 @@
 
 /// A single word in a bitset.
 ///
-/// Currently, this is an alias for [`usize`].
-pub type BitsetLimb = usize;
+/// Currently, this is an alias for [`u64`].
+/// It needs to be fixed-size for the derive macro to work correctly.
+pub type BitsetLimb = u64;
 
 /// A fixed-size builtin array.
 ///
