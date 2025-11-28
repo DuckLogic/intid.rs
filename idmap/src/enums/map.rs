@@ -1,11 +1,13 @@
 //! Defines the [`EnumMap`] type.
 
+use alloc::boxed::Box;
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::ops::{Index, IndexMut};
 
 use crate::direct::macros::impl_direct_map_iter;
+use crate::utils::{box_alloc_uninit, box_assume_init};
 use intid::array::Array;
 use intid::{uint, EnumId, EquivalentId, IntegerId};
 
@@ -32,29 +34,46 @@ impl<K: EnumId, V> Default for EnumMap<K, V> {
 }
 impl<K: EnumId, V> EnumMap<K, V> {
     /// Create a new map with no entries.
+    #[inline]
     pub fn new() -> Self {
+        let mut res = MaybeUninit::<Self>::uninit();
+        Self::init(&mut res);
+        // SAFETY: Initialized by `init` function
+        unsafe { res.assume_init() }
+    }
+    /// Create a new map with no entries, allocating memory on the heap instead of the stack.
+    ///
+    /// Using `Box::new(EnumMapDirect::new())` could require moving the underlying table
+    /// from the stack to the heap, as LLVM can struggle at eliminating copies.
+    /// This method avoids that copy by always allocating in-place.
+    #[inline]
+    pub fn new_boxed() -> Box<Self> {
+        let mut res = box_alloc_uninit::<Self>();
+        Self::init(&mut *res);
+        // SAFETY: Initialized by `init` function,
+        unsafe { box_assume_init(res) }
+    }
+    #[inline]
+    fn init(res: &mut MaybeUninit<Self>) -> &mut Self {
         Self::verify_len();
-        let mut table = MaybeUninit::<K::Array<Option<V>>>::uninit();
-        // SAFETY: Valid to transmute from MaybeUninit<[T]> to [MaybeUninit<T>]
+        // SAFETY: Known that pointer is valid and this struct has a `table` field
+        // We use old macro instead of new syntax to support the MSRV
+        let table: *mut K::Array<_> = unsafe { core::ptr::addr_of_mut!((*res.as_mut_ptr()).table) };
+        // Valid since K::Array is really just a `[T; LEN]`
+        let table = table.cast::<V>();
+        // SAFETY: Memory is known to be valid, and [MaybeUninit<T>] does not require initialization
         let slice = unsafe {
-            core::slice::from_raw_parts_mut(
-                table.as_mut_ptr() as *mut MaybeUninit<Option<V>>,
-                Self::TABLE_LEN,
-            )
+            core::slice::from_raw_parts_mut(table as *mut MaybeUninit<Option<V>>, Self::TABLE_LEN)
         };
         for val in slice {
-            // SAFETY: Valid to write to uninitialized memory
-            // MaybeUninit::write is a safe function, but missing from the MSRV
-            unsafe {
-                MaybeUninit::as_mut_ptr(val).write(None);
-            }
+            // No need for panic safety because `None` has a nop Drop
+            val.write(None);
         }
-        EnumMap {
-            // SAFETY: Have initialized all data
-            table: unsafe { MaybeUninit::assume_init(table) },
-            len: 0,
-            marker: PhantomData,
-        }
+        // SAFETY: We know that the result pointer valid since it is a mutable reference
+        // Now we are just initializing the other fields besides `table`
+        unsafe { (*res.as_mut_ptr()).len = 0 };
+        // SAFETY: We have initialized all the fields at this point
+        unsafe { res.assume_init_mut() }
     }
 
     const TABLE_LEN: usize = <K::Array<Option<V>> as Array<Option<V>>>::LEN;

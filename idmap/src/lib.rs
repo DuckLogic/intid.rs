@@ -11,6 +11,7 @@ extern crate alloc;
 
 pub mod direct;
 pub mod enums;
+mod utils;
 
 pub extern crate intid;
 
