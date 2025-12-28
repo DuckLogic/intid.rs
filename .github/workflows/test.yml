@@ -62,6 +62,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
         continue-on-error: false
+      - name: Pin MSRV-compatible versions
+        if: ${{ contains(matrix.rust, '1.') }}
+        env:
+          # this option is where the magic happens
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
+        run: |
+          rm -f Cargo.lock
+          cargo +stable update
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-hack,cargo-nextest
