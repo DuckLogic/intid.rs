@@ -224,13 +224,20 @@ pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
 /// Is not implemented for types like `u32` where inline storage
 /// would require inordinate amounts of space.
 ///
-/// All valid indexes and the total [`Self::COUNT`] must fit in a [`u32`] and a [`usize`].
+/// All valid indexes and [`Self::MAX_ID_INT + 1`](IntegerId::MAX_ID_INT)
+/// must fit into both a [`u16`] and a [`usize`].
+/// This means that [`u16`] cannot itself implement `EnumId`,
+/// since `u16::MAX + 1` doesn't fit in a [`u16`].
+/// Future versions of this trait may expand this to allow [`u32`] indexes,
+/// but that will be considered a breaking change for semver purposes.
 ///
 /// Note that this does *not* imply [`IntegerIdContiguous`],
 /// so not all be integers below [`Self::MAX_ID_INT`](IntegerId::MAX_ID_INT)
 /// are guaranteed to be valid.
 pub trait EnumId: IntegerId {
     /// The total number of valid values.
+    ///
+    /// This value must fit in a [`u16`].
     const COUNT: u32;
     /// A builtin array of `[T; {Self::MAX_ID_INT + 1}]`.
     ///
