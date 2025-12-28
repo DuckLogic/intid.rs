@@ -23,6 +23,7 @@ members = ["intid", "intid-core", "idmap", "intid-allocator", "intid-derive"]
 intid-derive = { path  = "intid-derive", version = "0.3.2" }
 intid-core = { path = "intid-core", version = "0.3.2"}
 intid = { path  = "intid", version = "0.3.2" }
+idmap = { path  = "idmap", version = "0.3.2" }
 
 [workspace.lints.rust]
 missing-docs = "deny"

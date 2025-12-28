@@ -15,6 +15,9 @@ keywords = ["intid", "id", "counter", "idmap", "integer"]
 intid-derive = { workspace = true, optional = true }
 intid-core.workspace = true
 
+[dev-dependencies]
+idmap.workspace = true
+
 [features]
 default = []
 # Export a procedural macro implementing IntegerId
