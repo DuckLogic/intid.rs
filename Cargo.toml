@@ -73,3 +73,11 @@ too-many-lines = "allow"
 must-use-candidate = "allow"
 return_self_not_must_use = "allow"
 items-after-statements = "allow"
+# these can actually make things clearer
+redundant-else = "allow"
+needless-continue = "allow"
+if-not-else = "allow"
+# done intentionally to make sure certian code type checks
+no-effect-underscore-binding = "allow"
+# too many false positives
+missing-panics-doc = "allow"

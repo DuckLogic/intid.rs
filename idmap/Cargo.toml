@@ -39,6 +39,8 @@ serde_test = "1"
 serde_derive = "1"
 itertools = "0.14"
 intid-derive.workspace = true
+quickcheck = "1"
+thiserror = "2"
 
 [package.metadata.docs.rs]
 all-features = true

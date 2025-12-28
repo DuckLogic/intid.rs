@@ -108,10 +108,20 @@ pub trait IntegerId: Copy + Eq + Debug + Send + Sync + 'static {
     /// This is necessary because trait methods cannot be marked `const`.
     const MAX_ID_INT: Option<Self::Int>;
 
-    /// Indicates that the type's implementation of [`IntegerId::to_int`] can trusted
+    /// Indicates that the type's implementation of [`IntegerId::to_int`] can be trusted
     /// to only return values in the range `MIN_ID_INT..=MAX_ID_INT`.
     ///
-    /// This can be relied upon by unsafe code, since the token is `unsafe` to construct.
+    /// Creating this token means that all of these guarantees can be relied upon for memory safety.
+    /// This allows unsafe code to avoid bounds checks,
+    /// but turns a correctness invariant into a soundness invariant.
+    ///
+    /// # Safety
+    /// The result of [`Self::to_int`] must always fall in the range `MIN_ID_INT..=MAX_ID_INT`.
+    ///
+    /// If [`EnumId`] is implemented,
+    /// then the requirements of the [`EnumId`] trait must be met as well.
+    /// In particular, the index must always fit in a `u32`
+    /// and have the appropriately `Array` and `BitSet` items.
     const TRUSTED_RANGE: Option<trusted::TrustedRangeToken<Self>> = None;
 
     /// Create an id from the underlying integer value,

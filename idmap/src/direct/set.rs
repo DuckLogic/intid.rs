@@ -6,6 +6,7 @@
 //! [`HashSet`]: std::collections::HashMap
 //! [`DirectIdMap`]: crate::direct::DirectIdMap
 
+use crate::utils::bitsets::retain_word;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug, Formatter};
 use core::hash::{Hash, Hasher};
@@ -156,26 +157,6 @@ impl<T: IntegerId> DirectIdSet<T> {
             self.len -= word_removed as usize;
         }
     }
-}
-/// The type of a word in a [`FixedBitSet`].
-type Word = fixedbitset::Block;
-#[inline]
-fn retain_word<F: FnMut(u32) -> bool>(original_word: Word, mut func: F) -> (Word, u32) {
-    let mut remaining = original_word;
-    let mut result = original_word;
-    let mut removed = 0;
-    while remaining != 0 {
-        let bit = remaining.trailing_zeros();
-        let mask: Word = 1 << bit;
-        debug_assert_ne!(result & mask, 0);
-        if !func(bit) {
-            result &= !mask;
-            removed += 1;
-        }
-        remaining &= !mask;
-    }
-    debug_assert!(removed <= 32);
-    (result, removed)
 }
 impl<T: IntegerId> Default for DirectIdSet<T> {
     #[inline]

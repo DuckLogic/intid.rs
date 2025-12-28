@@ -1,4 +1,5 @@
 pub trait PrivateUnsignedInt: Sized {
+    const BITS: u32;
     const ZERO: Self;
     const ONE: Self;
     const MAX: Self;
@@ -7,6 +8,9 @@ pub trait PrivateUnsignedInt: Sized {
     const TYPE_NAME: &'static str;
     fn checked_add(self, other: Self) -> Option<Self>;
     fn checked_sub(self, other: Self) -> Option<Self>;
+    fn trailing_zeros(self) -> u32;
+    fn leading_zeros(self) -> u32;
+    fn count_ones(self) -> u32;
     fn from_usize_checked(val: usize) -> Option<Self>;
     fn from_usize_wrapping(val: usize) -> Self;
     #[allow(clippy::wrong_self_convention)]
@@ -18,12 +22,14 @@ macro_rules! impl_primint {
     ($($target:ident),*) => ($(
         impl super::UnsignedPrimInt for $target {}
         impl super::ConvertPrimInts for $target {}
+        #[deny(unconditional_recursion)]
         impl PrivateUnsignedInt for $target {
             const TYPE_NAME: &'static str = stringify!($target);
             const ZERO: Self = {
                 assert!($target::MIN == 0, "signed integer");
                 0
             };
+            const BITS: u32 = $target::BITS;
             const ONE: Self = 1;
             const MAX: Self = $target::MAX;
             #[inline]
@@ -37,6 +43,18 @@ macro_rules! impl_primint {
             #[inline]
             fn checked_sub(self, other: Self) -> Option<Self> {
                 <$target>::checked_sub(self, other)
+            }
+            #[inline]
+            fn count_ones(self) -> u32 {
+                <$target>::count_ones(self)
+            }
+            #[inline]
+            fn leading_zeros(self) -> u32 {
+                <$target>::leading_zeros(self)
+            }
+            #[inline]
+            fn trailing_zeros(self) -> u32 {
+                <$target>::trailing_zeros(self)
             }
             #[inline]
             fn from_usize_checked(val: usize) -> Option<Self> {

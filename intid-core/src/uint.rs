@@ -128,6 +128,36 @@ pub const fn max_value<T: UnsignedPrimInt>() -> T {
     T::MAX
 }
 
+/// Determine the number of bits needed to represent the specified [`UnsignedPrimInt`].
+#[inline]
+pub const fn bits<T: UnsignedPrimInt>() -> u32 {
+    T::BITS
+}
+
+/// Get the number of trailing zeroes for the specified integer.
+///
+/// See [`u64::trailing_zeros`] for details.
+#[inline]
+pub fn trailing_zeros<T: UnsignedPrimInt>(val: T) -> u32 {
+    sealed::PrivateUnsignedInt::trailing_zeros(val)
+}
+
+/// Get the number of leading zeroes for the specified integer.
+///
+/// See [`u64::leading_zeros`] for details.
+#[inline]
+pub fn leading_zeros<T: UnsignedPrimInt>(val: T) -> u32 {
+    sealed::PrivateUnsignedInt::leading_zeros(val)
+}
+
+/// Count the number of one bits in the specified integer.
+///
+/// See [`u64::count_ones`] for details.
+#[inline]
+pub fn count_ones<T: UnsignedPrimInt>(val: T) -> u32 {
+    sealed::PrivateUnsignedInt::count_ones(val)
+}
+
 /// Attempt to describe the specified [`UnsignedPrimInt`]
 /// in a format suitable for debugging or panic messages.
 ///

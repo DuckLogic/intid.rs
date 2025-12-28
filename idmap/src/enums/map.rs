@@ -55,7 +55,10 @@ impl<K: EnumId, V> EnumMap<K, V> {
     }
     #[inline]
     fn init(res: &mut MaybeUninit<Self>) -> &mut Self {
-        Self::verify_len();
+        assert_eq!(
+            crate::enums::verify_enum_type::<K, V>().array_len,
+            Self::TABLE_LEN
+        );
         // SAFETY: Known that pointer is valid and this struct has a `table` field
         // We use old macro instead of new syntax to support the MSRV
         let table: *mut K::Array<_> = unsafe { core::ptr::addr_of_mut!((*res.as_mut_ptr()).table) };
@@ -77,21 +80,6 @@ impl<K: EnumId, V> EnumMap<K, V> {
     }
 
     const TABLE_LEN: usize = <K::Array<Option<V>> as Array<Option<V>>>::LEN;
-
-    fn verify_len() {
-        let type_name = core::any::type_name::<K>();
-        let expected_len = match K::MAX_ID_INT {
-            None => 0,
-            Some(max_id) => uint::to_usize_checked(max_id)
-                .and_then(|x| x.checked_add(1))
-                .unwrap_or_else(|| panic!("max_id for {type_name} overflows usize")),
-        };
-        assert_eq!(
-            expected_len,
-            Self::TABLE_LEN,
-            "Unexpected array length for {type_name}"
-        );
-    }
 
     /// Determine the index of the specified key.
     #[inline]

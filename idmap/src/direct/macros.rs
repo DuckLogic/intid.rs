@@ -84,7 +84,7 @@ macro_rules! impl_direct_set_iter {
                 self.len
             }
         }
-        impl<$($lt,)* T: IntegerId> DoubleEndedIterator for $target<$($lt,)* T> {
+        impl<$($lt,)* T: $key_bound> DoubleEndedIterator for $target<$($lt,)* T> {
             #[inline]
             fn next_back(&mut self) -> Option<Self::Item> {
                 match self.handle.next_back() {
@@ -100,8 +100,8 @@ macro_rules! impl_direct_set_iter {
                 }
             }
         }
-        impl<$($lt,)* T: IntegerId> ExactSizeIterator for $target<$($lt,)* T> {}
-        impl<$($lt,)* T: IntegerId> FusedIterator for $target<$($lt,)* T> {}
+        impl<$($lt,)* T: $key_bound> ExactSizeIterator for $target<$($lt,)* T> {}
+        impl<$($lt,)* T: $key_bound> FusedIterator for $target<$($lt,)* T> {}
     };
 }
 
