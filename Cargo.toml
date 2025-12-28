@@ -24,6 +24,10 @@ intid-derive = { path  = "intid-derive", version = "0.3.2" }
 intid-core = { path = "intid-core", version = "0.3.2"}
 intid = { path  = "intid", version = "0.3.2" }
 
+# bytemuck 1.14 - adds `align_offset` feature
+# bytemuck 1.19 - adds `track_caller` feature
+bytemuck = "1.19"
+
 [workspace.lints.rust]
 missing-docs = "deny"
 unsafe-op-in-unsafe-fn = "deny"
