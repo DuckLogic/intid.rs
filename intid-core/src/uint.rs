@@ -62,7 +62,7 @@ pub trait UnsignedPrimInt:
 /// Cast from one [`UnsignedPrimInt`] into another,
 /// returning `None` if there is overflow.
 #[inline]
-pub fn checked_cast<T: UnsignedPrimInt, U>(value: T) -> Option<T> {
+pub fn checked_cast<T: UnsignedPrimInt, U: UnsignedPrimInt>(value: T) -> Option<U> {
     sealed::PrivateUnsignedInt::checked_cast(value)
 }
 
