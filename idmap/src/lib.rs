@@ -16,4 +16,4 @@ mod utils;
 pub extern crate intid;
 
 pub use self::direct::{DirectIdMap, DirectIdSet};
-pub use self::enums::EnumMap;
+pub use self::enums::{EnumMap, EnumSet};
