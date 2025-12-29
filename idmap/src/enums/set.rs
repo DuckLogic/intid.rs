@@ -34,13 +34,16 @@ pub struct EnumSet<T: EnumId> {
     /// We could consider implementing this behind a cfg-flag
     /// if the space savings become significant enough.
     ///
-    /// It is safe to use a `u16` because `EnumId::MAX_ID + 1` is guaranteed to always fit in it.
-    /// This may change in the future.
+    /// It is safe to use a `u32` because `EnumId::MAX_ID + 1` is guaranteed to always fit in it.
+    /// Restricting [`EnumId`] to 16-bits does not give any space advantage here.
+    /// As long as the limbs in the array are at least 4-byte aligned,
+    /// a 16-bit length requires 2 bytes of padding and so is effectively the same size as a 32-bit length.
+    /// See [issue #4](https://github.com/DuckLogic/intid.rs/issues/14) for history.
     ///
     /// [popcount]: https://en.wikipedia.org/wiki/Hamming_weight
     /// [this paper]: https://arxiv.org/pdf/1611.07a612
     /// [this library]: https://github.com/kimwalisch/libpopcnt
-    len: u16,
+    len: u32,
     marker: PhantomData<T>,
 }
 #[inline]
@@ -224,11 +227,7 @@ impl<T: EnumId> EnumSet<T> {
                 func(key)
             });
             *word = updated_word;
-            #[allow(clippy::cast_possible_truncation)]
-            {
-                // bits will never exceed u16
-                self.len -= word_removed as u16;
-            }
+            self.len -= word_removed;
         }
     }
 }

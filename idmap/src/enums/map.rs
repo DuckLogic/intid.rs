@@ -23,6 +23,15 @@ use intid::{uint, EnumId, EquivalentId, IntegerId};
 #[derive(Clone)]
 pub struct EnumMap<K: EnumId, V> {
     table: K::Array<Option<V>>,
+    /// Directly store the length of the array so access is always `O(1)`.
+    ///
+    /// This will never overflow as `EnumId` guarantees that
+    /// `IntegerId::MAX_ID_INT + 1` always fits in a `u32`.
+    /// In some cases, limiting to 16-bits could give a space improvement.
+    /// It can only help if both `align_of::<K>() <= 2` and the table has a certain length.
+    /// A 16-bit counter would not be able to help [`crate::EnumSet`] at all.
+    ///
+    /// I do not consider these cases significant enough to restrict the [`EnumId`] to 16-bits.
     len: u32,
     marker: PhantomData<K>,
 }

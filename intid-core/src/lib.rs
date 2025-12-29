@@ -227,27 +227,30 @@ pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
     }
 }
 
-/// An [`IntegerId`] which are limited to small set of values.
+/// An [`IntegerId`] which are limited to small set of indexes.
 ///
 /// As the name suggests, it is most useful for C-style enums,
-/// and allows using enums as keys for inline map/sets without allocation.
+/// allowing use with [`EnumMap`] and [`EnumSet`] collections which do not do any allocation.
 /// Is not implemented for types like `u32` where inline storage
-/// would require inordinate amounts of space.
+/// would require inordinate amounts of space (an `EnumMap<u32, u8>`would take 4GiB).
 ///
-/// All valid indexes and [`Self::MAX_ID_INT + 1`](IntegerId::MAX_ID_INT)
-/// must fit into both a [`u16`] and a [`usize`].
-/// This means that [`u16`] cannot itself implement `EnumId`,
-/// since `u16::MAX + 1` doesn't fit in a [`u16`].
-/// Future versions of this trait may expand this to allow [`u32`] indexes,
-/// but that will be considered a breaking change for semver purposes.
+/// For this reason, all valid indexes and the value [`Self::MAX_ID_INT + 1`](IntegerId::MAX_ID_INT)
+/// must fit into both a [`u32`] and a [`usize`].
+/// This requirement prevents a `u32` from implementing `EnumId`,
+/// as `u32::MAX + 1` exceeds 32-bits. Implementing `EnumId for u32` would also be invalid on
+/// 16-bit architectures, as then a `u32` index would not fit into a `usize`.
 ///
-/// Note that this does *not* imply [`IntegerIdContiguous`],
-/// so not all be integers below [`Self::MAX_ID_INT`](IntegerId::MAX_ID_INT)
-/// are guaranteed to be valid.
+/// Note that this trait does not imply [`IntegerIdContiguous`].
+/// This means that while [`x <= Self::MAX_ID_INT`](IntegerId::MAX_ID_INT) is a necessary condition
+/// for [`Self::from_int(x)`](IntegerId::from_int) to succeed, it is not always a sufficient condition.
+///
+/// [`EnumMap`]: https://docs.rs/idmap/latest/idmap/enums/map/struct.EnumMap.html
+/// [`EnumSet`]: https://docs.rs/idmap/latest/idmap/enums/set/struct.EnumSet.html
 pub trait EnumId: IntegerId {
     /// The total number of valid values.
     ///
-    /// This value must fit in a [`u16`].
+    /// This value is at most equal to [`Self::MAX_ID_INT`](IntegerId::MAX_ID_INT),
+    /// which must fit in a [`u32`] due to the trait requirements.
     const COUNT: u32;
     /// A builtin array of `[T; {Self::MAX_ID_INT + 1}]`.
     ///
