@@ -16,7 +16,8 @@ use core::ops::Index;
 use iter::FusedIterator;
 
 use crate::direct::macros::impl_direct_set_iter;
-use fixedbitset::{FixedBitSet, Ones};
+use crate::utils::bitsets::ones::OnesIter;
+use fixedbitset::FixedBitSet;
 use intid::{EquivalentId, IntegerId};
 
 /// A set whose members implement [`IntegerId`].
@@ -116,7 +117,7 @@ impl<T: IntegerId> DirectIdSet<T> {
     pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             len: self.len,
-            handle: self.handle.ones(),
+            handle: OnesIter::new(self.handle.as_slice().iter().copied()),
             marker: PhantomData,
         }
     }
@@ -274,15 +275,16 @@ impl<T: IntegerId + Ord> Ord for DirectIdSet<T> {
     }
 }
 
-/// An iterator over the values in an [`DirectIdSet]`.
-///
-/// TODO: Cannot implement `Clone` because [`fixedbitset::Ones`] doesn't support it yet.
-/// It was added in [PR #130], but no public release has been made yet.
-///
-/// [PR #130]: https://github.com/petgraph/fixedbitset/pull/130
+type Word = fixedbitset::Block;
+
+/// An iterator over the values in an [`DirectIdSet`].
+#[derive(Clone)]
 pub struct Iter<'a, T: IntegerId> {
     len: usize,
-    handle: Ones<'a>,
+    // We use our own OnesIter iterator because fixedbitset::Ones doesn't implement Clone
+    //
+    // It was added in [PR #130], but no public release has been made yet.
+    handle: OnesIter<Word, iter::Copied<core::slice::Iter<'a, Word>>>,
     marker: PhantomData<T>,
 }
 impl_direct_set_iter!(Iter<'a, K: IntegerId>);
