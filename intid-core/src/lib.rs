@@ -268,6 +268,14 @@ pub trait EnumId: IntegerId {
     /// The type is correct, but the length must be checked with a const assertion.
     type BitSet: array::Array<array::BitsetLimb>;
 }
+impl EnumId for u8 {
+    const COUNT: u32 = {
+        assert!(u8::MAX as u32 + 1 == 256);
+        256
+    };
+    type Array<T> = [T; 256];
+    type BitSet = [u64; 4];
+}
 
 /// A type that can be for lookup as an [`IntegerId`].
 ///
