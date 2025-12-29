@@ -3,15 +3,12 @@ ALL_STABLE_FEATURES := "idmap/serde,idmap/petgraph_0_8,intid/num-traits,intid/no
 check: && check-format
     cargo +nightly clippy --all-targets --all-features
     cargo +nightly doc --no-deps --all-features
-    # Checking MSRV
-    cargo +1.65 check --all-targets --features {{ ALL_STABLE_FEATURES }}
+    @# TODO: Go back to checking MSRV (would require regenerating Cargo.lock
 
 test: check
     cargo +nightly nextest run --all-features
     cargo +stable nextest run --features {{ ALL_STABLE_FEATURES }}
-    # Testing MSRV
-    cargo +1.65 nextest run --features {{ ALL_STABLE_FEATURES }}
-    # Test that things work with the expander
+    @# TODO: Go back to testing  MSRV (see above)
     RUSTFLAGS="--cfg intid_derive_use_expander" cargo +nightly nextest run --all-features
 
 
