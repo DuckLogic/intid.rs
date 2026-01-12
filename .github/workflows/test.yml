@@ -72,10 +72,13 @@ jobs:
           cargo +stable update
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-hack,cargo-nextest
+          tool: cargo-hack,cargo-nextest,cargo-minimal-versions
       - name: Test (${{ matrix.rust }}, ${{ matrix.feature_flags }}})
         run: |
           cargo hack ${{ matrix.feature_flags }} nextest run --no-tests=pass
+      - name: Check -Zminimal-versions (${{ matrix.rust }}, ${{ matrix.feature_flags }}})
+        run: |
+          cargo hack ${{ matrix.feature_flags }} minimal-versions check
 
   clippy:
     # Only run on PRs if the source branch is on someone else's repo
