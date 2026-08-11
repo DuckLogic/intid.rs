@@ -12,7 +12,11 @@ use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::ops::Index;
 use intid::array::{Array, BitsetLimb};
-use intid::{EnumId, EquivalentId};
+use intid::{EnumId, EquivalentId, IntegerId};
+
+const _USED_FOR_DOCS: () = {
+    let _ = <u32 as IntegerId>::MAX_ID;
+};
 
 /// A set whose members implement [`EnumId`].
 ///
@@ -27,7 +31,7 @@ pub struct EnumSet<T: EnumId> {
     /// On older architectures, popcount can be very slow.
     /// Even on recent Intel architectures, the instruction has a 3-cycle latency.
     /// We don't want the `len()` call to any slower than [`crate::DirectIdSet`],
-    /// so we unconditionally store the length even when [`T::COUNT`] is small.
+    /// so we unconditionally store the length even when [`T::COUNT`](EnumId::COUNT) is small.
     ///
     /// Intel AVX2 has instructions to accelerate popcount computation,
     /// as discussed in [this paper] and implemented in [this library].

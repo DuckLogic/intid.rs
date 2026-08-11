@@ -1,4 +1,4 @@
-//! Implementations of [`IntegerId`] for foreign types.
+//! Implementations of [`IntegerId`](crate::IntegerId) for foreign types.
 
 macro_rules! impl_primint {
     ($($target:ident),*) => {$(

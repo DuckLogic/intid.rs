@@ -2,7 +2,7 @@ ALL_STABLE_FEATURES := "idmap/serde,idmap/petgraph_0_8,intid/num-traits,intid/no
 
 check: && check-format
     cargo +nightly clippy --all-targets --all-features
-    cargo +nightly doc --no-deps --all-features
+    cargo +nightly doc --document-private-items --no-deps --all-features
     @# TODO: Go back to checking MSRV (would require regenerating Cargo.lock
 
 test: check
