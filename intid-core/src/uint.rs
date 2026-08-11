@@ -1,214 +1,94 @@
-//! Defines the [`UnsignedPrimInt`] trait and its generic operations.
+//! Re-exports [`primint::UnsignedPrimInt`] and various module level functions.
 //!
-//! These are module functions rather than trait functions
-//! to avoid polluting the primitive integer namespaces.
+//! Exists primarily for compatibility with older versions of this crate,
+//! before [`primint`] was its own crate.
+//!
+//! It will be removed in the next semver-breaking release.
 
-use core::fmt::{Debug, Display, Formatter};
-use core::hash::Hash;
-
-mod sealed;
-
-maybe_trait_bound!(
-    MaybeNumTrait,
-    cfg(feature = "num-traits"),
-    num_traits::PrimInt
-);
-maybe_trait_bound!(MaybePod, cfg(feature = "bytemuck"), bytemuck::Pod);
-maybe_trait_bound!(
-    MaybeContiguous,
-    cfg(feature = "bytemuck"),
-    bytemuck::Contiguous
-);
-#[doc(hidden)]
-pub trait ConvertPrimInts:
-    From<u8>
-    + TryFrom<u8>
-    + TryFrom<u16>
-    + TryFrom<u32>
-    + TryFrom<u64>
-    + TryFrom<u128>
-    + TryFrom<usize>
-    + TryInto<u8>
-    + TryInto<u16>
-    + TryFrom<u32>
-    + TryFrom<u64>
-    + TryInto<u128>
-    + TryInto<usize>
-{
-}
-
-/// An unsigned primitive integer.
+/// A trait alias for [`primint::UnsignedPrimInt`].
 ///
-/// Most methods in this trait are only available through the [`intid::uint`](crate::uint) module
-/// in order to avoid conflict with inherit implementations and other traits.
-/// You can get access to more functionality by enabling the `num-traits` or `bytemuck` features,
-/// which will add [`num_traits::PrimInt`] and [`bytemuck::Pod`] bounds respectively.
-pub trait UnsignedPrimInt:
-    Eq
-    + Hash
-    + Ord
-    + Copy
-    + Default
-    + Debug
-    + Display
-    + ConvertPrimInts
-    + sealed::PrivateUnsignedInt
-    + MaybeNumTrait
-    + MaybePod
-    + MaybeContiguous
-{
-}
-
-/// Cast from one [`UnsignedPrimInt`] into another,
-/// returning `None` if there is overflow.
-#[inline]
-pub fn checked_cast<T: UnsignedPrimInt, U: UnsignedPrimInt>(value: T) -> Option<U> {
-    sealed::PrivateUnsignedInt::checked_cast(value)
-}
-
-/// Add the specified value to the integer,
-/// returning `None` if overflow occurs.
-#[inline]
-pub fn checked_add<T: UnsignedPrimInt>(left: T, right: T) -> Option<T> {
-    sealed::PrivateUnsignedInt::checked_add(left, right)
-}
-
-/// Subtract the specified value from the integer,
-/// returning `None` if overflow occurs.
-#[inline]
-pub fn checked_sub<T: UnsignedPrimInt>(left: T, right: T) -> Option<T> {
-    sealed::PrivateUnsignedInt::checked_sub(left, right)
-}
-
-/// Convert a primitive integer to a [`usize`],
-/// returning `None` if overflow occurs.
-#[inline]
-pub fn to_usize_checked<T: UnsignedPrimInt>(val: T) -> Option<usize> {
-    T::to_usize_checked(val)
-}
-
-/// Convert a primitive integer to a [`usize`],
-/// wrapping around on overflow.
-#[inline]
-pub fn to_usize_wrapping<T: UnsignedPrimInt>(val: T) -> usize {
-    T::to_usize_wrapping(val)
-}
-
-/// Convert a primitive integer to a [`usize`],
-/// returning `None` if overflow occurs.
-#[inline]
-pub fn from_usize_checked<T: UnsignedPrimInt>(val: usize) -> Option<T> {
-    T::from_usize_checked(val)
-}
-
-/// Convert a primitive integer to a [`usize`],
-/// wrapping around if overflow occurs.
-#[inline]
-pub fn from_usize_wrapping<T: UnsignedPrimInt>(val: usize) -> T {
-    T::from_usize_wrapping(val)
-}
-
-/// Determine the zero value of the specified `UnsignedPrimInt`.
+/// This is logically a re-export,
+/// but a wrapper function is used instead as re-exports can't currently be deprecated ([rust-lang/rust#30827])
 ///
-/// This function always succeeds (a `NonZero` is not a primitive integer)
-#[inline]
-pub const fn zero<T: UnsignedPrimInt>() -> T {
-    T::ZERO
-}
-
-/// Determine the one value of the specified `UnsignedPrimInt`.
-#[inline]
-pub const fn one<T: UnsignedPrimInt>() -> T {
-    T::ONE
-}
-
-/// Determine the maximum value of the specified [`UnsignedPrimInt`].
-#[inline]
-pub const fn max_value<T: UnsignedPrimInt>() -> T {
-    T::MAX
-}
-
-/// Determine the number of bits needed to represent the specified [`UnsignedPrimInt`].
-#[inline]
-pub const fn bits<T: UnsignedPrimInt>() -> u32 {
-    T::BITS
-}
-
-/// Get the number of trailing zeroes for the specified integer.
+/// Since trait aliases are not usable on stable rust,
+/// we use a blanket impl and trait bound instead.
 ///
-/// See [`u64::trailing_zeros`] for details.
-#[inline]
-pub fn trailing_zeros<T: UnsignedPrimInt>(val: T) -> u32 {
-    sealed::PrivateUnsignedInt::trailing_zeros(val)
-}
+/// This trait alias will be removed in the next semver-breaking release.
+///
+/// [rust-lang/rust#30827]: https://github.com/rust-lang/rust/issues/30827
+#[deprecated(note = "Use primint::UnsignedPrimInt directly")]
+pub trait UnsignedPrimInt: primint::UnsignedPrimInt {}
+#[allow(deprecated)]
+impl<T: primint::UnsignedPrimInt> UnsignedPrimInt for T {}
 
-/// Get the number of leading zeroes for the specified integer.
+/// A type alias for [`primint::fmt::DebugDesc`].
 ///
-/// See [`u64::leading_zeros`] for details.
-#[inline]
-pub fn leading_zeros<T: UnsignedPrimInt>(val: T) -> u32 {
-    sealed::PrivateUnsignedInt::leading_zeros(val)
-}
+/// This is logically a re-export,
+/// but a type alias is used instead as re-exports can't currently be deprecated ([rust-lang/rust#30827])
+///
+/// This type alias will be removed in the next semver-breaking release.
+///
+/// [rust-lang/rust#30827]: https://github.com/rust-lang/rust/issues/30827
+#[deprecated(note = "Use primint::fmt::DebugDesc directly")]
+pub type DebugDesc<T> = primint::fmt::DebugDesc<T>;
 
-/// Count the number of one bits in the specified integer.
-///
-/// See [`u64::count_ones`] for details.
-#[inline]
-pub fn count_ones<T: UnsignedPrimInt>(val: T) -> u32 {
-    sealed::PrivateUnsignedInt::count_ones(val)
+macro_rules! deprecated_shim_fn {
+    (@add_attrs $name:ident => $target:path {$decl:item}) => {
+        #[doc = concat!("An alias for [`", stringify!($target), "`].")]
+        ///
+        /// This is logically a re-export,
+        /// but a wrapper function is used instead as re-exports can't currently be deprecated ([rust-lang/rust#30827])
+        ///
+        /// This function will be removed in the next semver-breaking release.
+        ///
+        /// [rust-lang/rust#30827]: https://github.com/rust-lang/rust/issues/30827
+        #[deprecated = concat!("Use ", stringify!($target), " directly.")]
+        #[inline] // just a wrapper
+        #[allow(deprecated)]
+        $decl
+    };
+    (@determine_target $name:ident $target:path) => ($target);
+    (@determine_target $name:ident) => (primint::$name);
+    ($($({$x:ident})? fn $name:ident $(<$($param:ident: $bound:ident),+>)? ($($arg:ident: $argty:ty),*) $(-> $ret:ty)?;)+) => {
+        $(deprecated_shim_fn!(@add_attrs $name => primint::$name {
+            pub $($x)? fn $name$(<$($param: $bound),*>)?($($arg: $argty,)*) $(-> $ret)? {
+                primint::$name $(::<$($param, )*>)?($($arg),*)
+            }
+        });)*
+    };
 }
-
-/// Attempt to describe the specified [`UnsignedPrimInt`]
-/// in a format suitable for debugging or panic messages.
-///
-/// This differs from the standard `Display` and `Debug` implementation,
-/// because `T::MAX` is special-cased.
-///
-/// *WARNING*: This representation may change without warning in the future,
-/// so the exact representation should not be relied upon.
-///
-/// ## Examples
-/// ```
-/// use intid_core::uint::debug_desc;
-/// assert_eq!(
-///     debug_desc(3u32).to_string(),
-///     "3"
-/// );
-/// assert_eq!(
-///     debug_desc(u32::MAX).to_string(),
-///     "u32::MAX"
-/// )
-/// ```
-#[cold]
-pub fn debug_desc<T: UnsignedPrimInt>(value: T) -> DebugDesc<T> {
-    DebugDesc(value)
+deprecated_shim_fn! {
+    {const} fn bits<T: UnsignedPrimInt>() -> u32;
+    fn checked_add<T: UnsignedPrimInt>(left: T, right: T) -> Option<T>;
+    fn checked_cast<T: UnsignedPrimInt, U: UnsignedPrimInt>(value: T) -> Option<U>;
+    fn checked_sub<T: UnsignedPrimInt>(left: T, right: T) -> Option<T>;
+    fn count_ones<T: UnsignedPrimInt>(value: T) -> u32;
+    fn from_usize_checked<T: UnsignedPrimInt>(value: usize) -> Option<T>;
+    fn from_usize_wrapping<T: UnsignedPrimInt>(value: usize) -> T;
+    fn leading_zeros<T: UnsignedPrimInt>(value: T) -> u32;
+    {const} fn max_value<T: UnsignedPrimInt>() -> T;
+    {const} fn one<T: UnsignedPrimInt>() -> T;
+    fn to_usize_checked<T: UnsignedPrimInt>(value: T) -> Option<usize>;
+    fn to_usize_wrapping<T: UnsignedPrimInt>(value: T) -> usize;
+    fn trailing_zeros<T: UnsignedPrimInt>(value: T) -> u32;
+    {const} fn zero<T: UnsignedPrimInt>() -> T;
 }
-
-/// The description of an unsigned integer returned by [`debug_desc`].
-#[derive(Clone)]
-pub struct DebugDesc<T: UnsignedPrimInt>(T);
-impl<T: UnsignedPrimInt> Display for DebugDesc<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        if self.0 == T::MAX {
-            f.write_str(T::TYPE_NAME)?;
-            f.write_str("::MAX")
-        } else {
-            <T as Display>::fmt(&self.0, f)
+deprecated_shim_fn! {
+    @add_attrs debug_desc => primint::fmt::debug_desc {
+        pub fn debug_desc<T: UnsignedPrimInt>(value: T) -> DebugDesc<T> {
+            primint::fmt::debug_desc(value)
         }
-    }
-}
-impl<T: UnsignedPrimInt> Debug for DebugDesc<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        <Self as Display>::fmt(self, f)
     }
 }
 
 /// Panic with a message indicating that an ID is not valid.
 ///
 /// Used to implement the panic in [`crate::IntegerId::from_int`].
+///
+/// This is the only functionality in this crate not re-exported from [`primint`].
 #[inline(never)]
 #[track_caller]
 #[cold]
-pub(crate) fn invalid_id<T: UnsignedPrimInt>(id: T) -> ! {
-    panic!("Invalid id: {}", debug_desc(id))
+pub(crate) fn invalid_id<T: primint::UnsignedPrimInt>(id: T) -> ! {
+    panic!("Invalid id: {}", primint::fmt::debug_desc(id))
 }

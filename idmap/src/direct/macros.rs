@@ -13,7 +13,7 @@ macro_rules! impl_direct_map_iter {
                         Some((index, Some($v))) => {
                             // SAFETY: Value exists => index is valid
                             let $k = unsafe {
-                                $kt::from_int_unchecked(intid::uint::from_usize_wrapping(index))
+                                $kt::from_int_unchecked(primint::from_usize_wrapping(index))
                             };
                             self.len -= 1;
                             return Some($map)
@@ -37,7 +37,7 @@ macro_rules! impl_direct_map_iter {
                         Some((index, Some($v))) => {
                             // SAFETY: Value exists => index is valid
                             let $k = unsafe {
-                                $kt::from_int_unchecked(intid::uint::from_usize_wrapping(index))
+                                $kt::from_int_unchecked(primint::from_usize_wrapping(index))
                             };
                             self.len -= 1;
                             return Some($map)
@@ -64,7 +64,7 @@ macro_rules! impl_direct_set_iter {
                     Some(index) => {
                         self.len -= 1;
                         // SAFETY: Id is present => id is valid
-                        Some(unsafe { K ::from_int_unchecked(intid::uint::from_usize_wrapping(index)) })
+                        Some(unsafe { K ::from_int_unchecked(primint::from_usize_wrapping(index)) })
                     }
                     None => {
                         debug_assert_eq!(self.len, 0);
@@ -91,7 +91,7 @@ macro_rules! impl_direct_set_iter {
                     Some(index) => {
                         self.len -= 1;
                         // SAFETY: Id is present => id is valid
-                        Some(unsafe { T::from_int_unchecked(intid::uint::from_usize_wrapping(index)) })
+                        Some(unsafe { T::from_int_unchecked(primint::from_usize_wrapping(index)) })
                     }
                     None => {
                         debug_assert_eq!(self.len, 0);

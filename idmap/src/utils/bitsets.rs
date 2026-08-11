@@ -1,7 +1,6 @@
 //! Utilities for bitsets typesl.
 use core::ops::{BitAnd, BitAndAssign, Not, Shl};
-use intid::uint::{one, trailing_zeros, zero};
-use intid::UnsignedPrimInt;
+use primint::{one, trailing_zeros, zero, UnsignedPrimInt};
 
 pub trait BitsetWord:
     UnsignedPrimInt

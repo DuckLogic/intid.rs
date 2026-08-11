@@ -1,5 +1,5 @@
 use crate::utils::bitsets::BitsetWord;
-use intid::uint::{bits, count_ones, leading_zeros, one, trailing_zeros, zero};
+use primint::{bits, count_ones, leading_zeros, one, trailing_zeros, zero};
 
 /// Iterate over the ones in a single word.
 #[derive(Clone)]

@@ -41,6 +41,6 @@ fn assert_enum<T: intid::EnumId>() {
     assert_id::<T>();
     assert_eq!(
         T::Array::<()>::LEN,
-        T::MAX_ID_INT.map_or(0, |x| intid::uint::to_usize_checked(x).unwrap() + 1)
+        T::MAX_ID_INT.map_or(0, |x| primint::to_usize_checked(x).unwrap() + 1)
     );
 }

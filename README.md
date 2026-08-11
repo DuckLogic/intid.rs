@@ -8,6 +8,8 @@ The `intid-allocator` crate provides a way to efficiently track and reuse unused
 
 The `intid` crate defines the foundational `IntegerId` trait. Enabling the `derive` feature adds a derive macro.
 
+The `primint` crate adds an abstraction over primitive integer types, used by the `intid` crate internally.
+
 ## License
 Licensed under either the [Apache 2.0 License](./LICENSE-APACHE.txt) or [MIT License](./LICENSE-MIT.txt) at your option.
 

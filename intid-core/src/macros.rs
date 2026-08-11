@@ -123,18 +123,3 @@ macro_rules! impl_newtype_id_body {
         }
     };
 }
-
-macro_rules! maybe_trait_bound {
-    ($name:ident, cfg($flag:meta), $bound:path) => {
-        #[cfg($flag)]
-        #[doc(hidden)]
-        pub trait $name: $bound {}
-        #[cfg(not($flag))]
-        #[doc(hidden)]
-        pub trait $name {}
-        #[cfg($flag)]
-        impl<T: $bound> $name for T {}
-        #[cfg(not($flag))]
-        impl<T> $name for T {}
-    };
-}

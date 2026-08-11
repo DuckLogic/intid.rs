@@ -124,7 +124,7 @@ impl<T: EnumId> EnumSet<T> {
     /// If this token is missing, this function makes no unsafe assumptions.
     #[inline]
     fn verified_index(key: &T) -> (usize, u32) {
-        let index = intid::uint::checked_cast::<_, u32>(key.to_int()).unwrap_or_else(|| {
+        let index = primint::checked_cast::<_, u32>(key.to_int()).unwrap_or_else(|| {
             if T::TRUSTED_RANGE.is_some() {
                 // SAFETY: We have a TRUSTED_RANGE, so cannot overflow a u32
                 unsafe { core::hint::unreachable_unchecked() }
@@ -227,7 +227,7 @@ impl<T: EnumId> EnumSet<T> {
             let (updated_word, word_removed) = retain_word(*word, |bit| {
                 let id = (word_index * 32) + (bit as usize);
                 // Safety: If present in the map, it is known to be valid
-                let key = unsafe { T::from_int_unchecked(intid::uint::from_usize_wrapping(id)) };
+                let key = unsafe { T::from_int_unchecked(primint::from_usize_wrapping(id)) };
                 func(key)
             });
             *word = updated_word;

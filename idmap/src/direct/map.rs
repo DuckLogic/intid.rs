@@ -75,7 +75,7 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     pub fn get(&self, id: impl EquivalentId<K>) -> Option<&V> {
         let id = id.as_id();
         self.values
-            .get(intid::uint::to_usize_checked(id.to_int())?)?
+            .get(primint::to_usize_checked(id.to_int())?)?
             .as_ref()
     }
 
@@ -85,7 +85,7 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     pub fn get_mut(&mut self, id: impl EquivalentId<K>) -> Option<&mut V> {
         let id = id.as_id();
         self.values
-            .get_mut(intid::uint::to_usize_checked(id.to_int())?)?
+            .get_mut(primint::to_usize_checked(id.to_int())?)?
             .as_mut()
     }
 
@@ -93,7 +93,7 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     #[inline]
     pub fn insert(&mut self, id: K, value: V) -> Option<V> {
         let id = id.to_int();
-        let id = intid::uint::to_usize_checked(id).unwrap_or_else(|| oom_id(id));
+        let id = primint::to_usize_checked(id).unwrap_or_else(|| oom_id(id));
         self.grow_to(id);
         let old_value = self.values[id].replace(value);
         if old_value.is_none() {
@@ -107,7 +107,7 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
     #[inline]
     pub fn remove(&mut self, id: impl EquivalentId<K>) -> Option<V> {
         let id = id.as_id().to_int();
-        let id = intid::uint::to_usize_checked(id).unwrap_or_else(|| oom_id(id));
+        let id = primint::to_usize_checked(id).unwrap_or_else(|| oom_id(id));
         if id >= self.values.len() {
             return None;
         }
@@ -170,7 +170,7 @@ impl<K: IntegerId, V> DirectIdMap<K, V> {
                 continue;
             };
             // SAFETY: If entry exists, the key is guaranteed to be valid
-            let key = unsafe { K::from_int_unchecked(intid::uint::from_usize_wrapping(index)) };
+            let key = unsafe { K::from_int_unchecked(primint::from_usize_wrapping(index)) };
             if !func(key, entry_value) {
                 *entry = None; // gotta love NLL
                 self.len -= 1;

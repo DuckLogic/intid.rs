@@ -9,7 +9,7 @@ use core::ops::{Index, IndexMut};
 use crate::direct::macros::impl_direct_map_iter;
 use crate::utils::{box_alloc_uninit, box_assume_init};
 use intid::array::Array;
-use intid::{uint, EnumId, EquivalentId, IntegerId};
+use intid::{EnumId, EquivalentId, IntegerId};
 
 /// A map from an [`EnumId`] key to values,
 /// implemented using an inline array.
@@ -94,7 +94,7 @@ impl<K: EnumId, V> EnumMap<K, V> {
     #[inline]
     #[allow(clippy::unused_self)] // intentional
     fn index_of(&self, key: impl EquivalentId<K>) -> usize {
-        uint::to_usize_wrapping(IntegerId::to_int(key.as_id()))
+        primint::to_usize_wrapping(IntegerId::to_int(key.as_id()))
     }
 
     /// The number of entries in the map.
@@ -195,7 +195,7 @@ impl<K: EnumId, V> EnumMap<K, V> {
                 continue;
             };
             // SAFETY: If entry exists, the key is guaranteed to be valid
-            let key = unsafe { K::from_int_unchecked(intid::uint::from_usize_wrapping(index)) };
+            let key = unsafe { K::from_int_unchecked(primint::from_usize_wrapping(index)) };
             if !func(key, entry_value) {
                 *entry = None; // gotta love NLL
                 self.len -= 1;

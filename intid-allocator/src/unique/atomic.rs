@@ -3,7 +3,7 @@ use crate::IdExhaustedError;
 use crate::{IntegerId, UniqueIdAllocator};
 use core::marker::PhantomData;
 use core::sync::atomic::Ordering;
-use intid::{uint, IntegerIdCounter};
+use intid::{primint, IntegerIdCounter};
 
 /// Allocates unique integer ids atomically,
 /// in a way safe to use from multiple threads.
@@ -97,7 +97,7 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
     pub fn approx_max_used_id(&self) -> Option<T> {
         IntegerIdCounter::checked_sub(
             T::from_int_checked(self.next_id.load(Ordering::Relaxed))?,
-            uint::one(),
+            primint::one(),
         )
     }
 
@@ -123,7 +123,7 @@ impl<T: IntegerIdCounter> UniqueIdAllocatorAtomic<T> {
         // Safe to used relaxed ordering because we only guarantee atomicity, not synchronization
         self.next_id
             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |x| {
-                uint::checked_add(x, uint::one())
+                primint::checked_add(x, primint::one())
             })
             .ok()
             .and_then(T::from_int_checked)

@@ -1,6 +1,6 @@
 use crate::IdExhaustedError;
 use core::cell::Cell;
-use intid::{uint, IntegerIdCounter};
+use intid::{primint, IntegerIdCounter};
 
 #[cfg(feature = "atomic")]
 pub mod atomic;
@@ -27,7 +27,7 @@ impl<T: IntegerIdCounter> UniqueIdAllocator<T> {
     pub fn max_used_id(&self) -> Option<T> {
         self.next_id
             .get()
-            .and_then(|id| IntegerIdCounter::checked_sub(id, uint::one()))
+            .and_then(|id| IntegerIdCounter::checked_sub(id, primint::one()))
     }
 
     /// Create a new allocator,
@@ -75,7 +75,7 @@ impl<T: IntegerIdCounter> UniqueIdAllocator<T> {
     pub fn try_alloc(&self) -> Result<T, IdExhaustedError<T>> {
         let old_id = self.next_id.get().ok_or_else(IdExhaustedError::new)?;
         self.next_id
-            .set(IntegerIdCounter::checked_add(old_id, intid::uint::one()));
+            .set(IntegerIdCounter::checked_add(old_id, primint::one()));
         Ok(old_id)
     }
 

@@ -10,15 +10,15 @@ pub mod set;
 
 pub use self::map::DirectIdMap;
 pub use self::set::DirectIdSet;
-use intid::uint::UnsignedPrimInt;
+use intid::primint;
 
 /// Panic indicating that an id would exhaust available memory.
 #[inline(never)]
 #[track_caller]
 #[cold]
-fn oom_id(id: impl UnsignedPrimInt) -> ! {
+fn oom_id(id: impl primint::UnsignedPrimInt) -> ! {
     panic!(
         "Storing id would exhaust memory: {}",
-        intid::uint::debug_desc(id),
+        primint::fmt::debug_desc(id),
     )
 }

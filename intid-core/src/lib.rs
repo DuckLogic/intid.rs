@@ -21,6 +21,13 @@
 #![cfg_attr(feature = "nightly", feature(never_type,))]
 extern crate alloc;
 
+/// The `primint` crate used to abstract over primitive integer types.
+///
+/// The central traits used are [`primint::PrimitiveInt`] and [`primint::UnsignedPrimInt`].
+/// All bounds in this crate use [`primint::UnsignedPrimInt`],
+/// as signed integers are not useful for our purposes.
+pub extern crate primint;
+
 use core::fmt::Debug;
 
 #[macro_use]
@@ -32,7 +39,7 @@ pub mod trusted;
 pub mod uint;
 pub mod utils;
 
-pub use uint::UnsignedPrimInt;
+pub use primint::UnsignedPrimInt;
 
 /// An identifier which can be sensibly converted to/from an unsigned integer value.
 ///
@@ -90,7 +97,7 @@ pub trait IntegerId: Copy + Eq + Debug + Send + Sync + 'static {
     ///
     /// Every valid instance of `Self` should correspond to a valid `Self::Int`.
     /// However, the other direction may not always be true.
-    type Int: uint::UnsignedPrimInt;
+    type Int: primint::UnsignedPrimInt;
     /// The value of this type with the smallest integer value,
     /// or `None` if this type is uninhabited.
     const MIN_ID: Option<Self>;
@@ -210,7 +217,7 @@ pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
     /// This is implemented as an associated method to avoid namespace pollution.
     #[inline]
     fn checked_add(this: Self, offset: Self::Int) -> Option<Self> {
-        uint::checked_add(this.to_int(), offset).and_then(Self::from_int_checked)
+        primint::checked_add(this.to_int(), offset).and_then(Self::from_int_checked)
     }
 
     /// Increment this value by the specified offset,
@@ -223,7 +230,7 @@ pub trait IntegerIdCounter: IntegerId + IntegerIdContiguous {
     /// This is implemented as an associated method to avoid namespace pollution.
     #[inline]
     fn checked_sub(this: Self, offset: Self::Int) -> Option<Self> {
-        uint::checked_sub(this.to_int(), offset).and_then(Self::from_int_checked)
+        primint::checked_sub(this.to_int(), offset).and_then(Self::from_int_checked)
     }
 }
 

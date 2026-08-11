@@ -12,7 +12,7 @@ mod serde;
 pub mod set;
 
 use intid::array::BitsetLimb;
-use intid::{uint, EnumId};
+use intid::EnumId;
 
 pub use self::map::EnumMap;
 pub use self::set::EnumSet;
@@ -35,7 +35,7 @@ pub(crate) fn verify_enum_type<K: EnumId, V>() -> VerifiedEnumInfo {
     let type_name = core::any::type_name::<K>();
     let expected_array_len = u32::from(match K::MAX_ID_INT {
         None => 0,
-        Some(max_id) => uint::checked_cast::<K::Int, u16>(max_id)
+        Some(max_id) => primint::checked_cast::<K::Int, u16>(max_id)
             .and_then(|x| x.checked_add(1))
             .unwrap_or_else(|| panic!("max_id for {type_name} overflows a u16")),
     });

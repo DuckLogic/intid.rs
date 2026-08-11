@@ -63,8 +63,7 @@ impl<T: IntegerId> DirectIdSet<T> {
     #[inline]
     pub fn insert(&mut self, value: T) -> bool {
         let value = value.to_int();
-        let index: usize =
-            intid::uint::to_usize_checked(value).unwrap_or_else(|| super::oom_id(value));
+        let index: usize = primint::to_usize_checked(value).unwrap_or_else(|| super::oom_id(value));
         let was_present = self.handle.contains(index);
         self.handle.grow_and_insert(index);
         if !was_present {
@@ -82,7 +81,7 @@ impl<T: IntegerId> DirectIdSet<T> {
     #[inline]
     pub fn remove(&mut self, value: impl EquivalentId<T>) -> bool {
         let value = value.as_id().to_int();
-        let Some(index) = intid::uint::to_usize_checked(value) else {
+        let Some(index) = primint::to_usize_checked(value) else {
             return false; // overflow -> not present
         };
         if index >= self.handle.len() {
@@ -104,7 +103,7 @@ impl<T: IntegerId> DirectIdSet<T> {
     pub fn contains(&self, value: impl EquivalentId<T>) -> bool {
         let value = value.as_id().to_int();
         // is_some_and requires 1.70
-        match intid::uint::to_usize_checked(value) {
+        match primint::to_usize_checked(value) {
             None => false,
             Some(x) => self.handle.contains(x),
         }
@@ -151,7 +150,7 @@ impl<T: IntegerId> DirectIdSet<T> {
             let (updated_word, word_removed) = retain_word(*word, |bit| {
                 let id = (word_index * 32) + (bit as usize);
                 // Safety: If present in the map, it is known to be valid
-                let key = unsafe { T::from_int_unchecked(intid::uint::from_usize_wrapping(id)) };
+                let key = unsafe { T::from_int_unchecked(primint::from_usize_wrapping(id)) };
                 func(key)
             });
             *word = updated_word;

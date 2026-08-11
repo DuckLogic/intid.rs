@@ -19,6 +19,9 @@ quote = "1"
 proc-macro2 = "1"
 expander = { version = "2.2", optional = true }
 
+[dev-dependencies]
+primint.workspace = true
+
 [dev-dependencies.intid]
 # Adding `intid` directly causes a circular dependency, breaking `cargo publish`.
 # Adding `intid_core` directly isn't helpful since the macros all refer to `intid`.
