@@ -26,8 +26,8 @@ intid = { path  = "intid", version = "0.3.2" }
 idmap = { path  = "idmap", version = "0.3.2" }
 
 [workspace.lints.rust]
-missing-docs = "deny"
-unsafe-op-in-unsafe-fn = "deny"
+missing_docs = "deny"
+unsafe_op_in_unsafe_fn = "deny"
 
 [workspace.lints.rust.unexpected_cfgs]
 level = "warn"
@@ -53,31 +53,31 @@ multiple_unsafe_ops_per_block = "deny"
 ## aggressively lint casts ##
 # in an ideal world, overflowing casts would panic
 # linting them (with deny) is the second best option
-cast-possible-truncation = "deny"
-cast-possible-wrap = "deny"
-cast-precision-loss = "deny"
-cast-sign-loss = "deny"
-char-lit-as-u8 = "deny"
-cast-ptr-alignment = "deny"
-fn-to-numeric-cast = "deny"
-fn-to-numeric-cast-any = "deny"
-fn-to-numeric-cast-with-truncation = "deny"
-cast-lossless = "allow" # lossless casts are fine, lints will catch if types change
+cast_possible_truncation = "deny"
+cast_possible_wrap = "deny"
+cast_precision_loss = "deny"
+cast_sign_loss = "deny"
+char_lit_as_u8 = "deny"
+cast_ptr_alignment = "deny"
+fn_to_numeric_cast = "deny"
+fn_to_numeric_cast_any = "deny"
+fn_to_numeric_cast_with_truncation = "deny"
+cast_lossless = "allow" # lossless casts are fine, lints will catch if types change
 ptr_as_ptr = "allow" # pointer casts are fine as long as they don't violate another rule
 
 #
 # excessively pedantic (even for clippy::pedantic)
 #
-too-many-lines = "allow"
+too_many_lines = "allow"
 # We don't put #[must_use] on len
-must-use-candidate = "allow"
+must_use_candidate = "allow"
 return_self_not_must_use = "allow"
-items-after-statements = "allow"
+items_after_statements = "allow"
 # these can actually make things clearer
-redundant-else = "allow"
-needless-continue = "allow"
-if-not-else = "allow"
+redundant_else = "allow"
+needless_continue = "allow"
+if_not_else = "allow"
 # done intentionally to make sure certian code type checks
-no-effect-underscore-binding = "allow"
+no_effect_underscore_binding = "allow"
 # too many false positives
-missing-panics-doc = "allow"
+missing_panics_doc = "allow"
