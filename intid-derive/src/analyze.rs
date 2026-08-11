@@ -67,7 +67,7 @@ pub fn analyze(
                 }
                 0 => Err(syn::Error::new_spanned(
                     &ast.ident,
-                    format!("{target_trait} does not currently support empty structs",),
+                    format!("{target_trait} does not currently support empty structs"),
                 )),
                 _ => Err(syn::Error::new_spanned(
                     fields.iter().nth(1).unwrap(),
@@ -131,7 +131,7 @@ pub fn analyze(
                 Some(other) => {
                     return Err(syn::Error::new(
                         other.span(),
-                        format!("failed to determine discriminant type for {other}",),
+                        format!("failed to determine discriminant type for {other}"),
                     ))
                 }
             };

@@ -107,10 +107,8 @@ impl<W: BitsetWord, I: Iterator<Item = W>> Iterator for OnesIter<W, I> {
             } else if let Some((next_word_index, next_word)) = self.word_iter.next() {
                 self.begin_word = Some((next_word_index, SingleWordOnes::new(next_word)));
                 continue;
-            } else if let Some(combined_index) = self.next_from_ending() {
-                return Some(combined_index);
             } else {
-                return None;
+                return self.next_from_ending();
             }
         }
     }
@@ -147,10 +145,8 @@ impl<W: BitsetWord, I: DoubleEndedIterator<Item = W> + ExactSizeIterator> Double
             } else if let Some((next_word_index, next_word)) = self.word_iter.next_back() {
                 self.end_word = Some((next_word_index, SingleWordOnes::new(next_word)));
                 continue;
-            } else if let Some(combined_index) = self.next_back_from_beginning() {
-                return Some(combined_index);
             } else {
-                return None;
+                return self.next_back_from_beginning();
             }
         }
     }
