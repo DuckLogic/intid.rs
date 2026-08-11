@@ -5,7 +5,6 @@ version.workspace = true
 authors.workspace = true
 repository.workspace = true
 edition.workspace = true
-readme.workspace = true
 license.workspace = true
 rust-version.workspace = true
 categories = ["no-std::no-alloc", "no-std", "rust-patterns", "data-structures"]

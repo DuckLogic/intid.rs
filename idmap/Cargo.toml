@@ -5,7 +5,6 @@ description = "Efficient maps of integer id keys to values, backed by an underly
 authors.workspace = true
 repository.workspace = true
 edition.workspace = true
-readme = "README.md"
 license.workspace = true
 rust-version.workspace = true
 categories = ["data-structures", "rust-patterns"]

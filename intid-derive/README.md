@@ -1,5 +1,5 @@
-idmap.rs
-==========
+intid-derive.rs
+===============
 <!-- cargo-reedme: start -->
 
 <!-- cargo-reedme: info-start
@@ -8,12 +8,11 @@ idmap.rs
 
 cargo-reedme: info-end -->
 
-Efficient maps of integer id keys to values.
+Implements the [`IntegerId`](https://docs.rs/intid-derive/latest/intid_derive/derive.IntegerId.html) derive macro.
 
-A [`DirectIdMap`](https://docs.rs/idmap/latest/idmap/direct/map/struct.DirectIdMap.html) is a strongly typed wrapper around a `Vec<Option<V>>` lookup table,
-and the [`DirectIdSet`](https://docs.rs/idmap/latest/idmap/direct/set/struct.DirectIdSet.html) is a similar wrapper around a bitset.
-
-Part of the [intid.rs](https://github.com/DuckLogic/intid.rs) set of crates.
+Generally, you want to use the re-export from the `intid` or `idmap` crates.
+In the `intid` crate this requires explicitly enabling the `derive` feature.
+In the `idmap` crate, the derive feature is on by default.
 
 <!-- cargo-reedme: end -->
 

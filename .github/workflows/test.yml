@@ -130,3 +130,19 @@ jobs:
       - name: Docs
         run: |
           cargo doc --all-features --document-private-items
+  cargo-reedme:
+    # Only run on PRs if the source branch is on someone else's repo
+    if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@nightly  # cargo-reedme requires nightly
+        with:
+          components: rust-src
+      - uses: taiki-e/cache-cargo-install-action@v3  # not supported by regular install action
+        with:
+          tool: cargo-reedme
+      - name: Run cargo-reedme
+        run: |
+          cargo reedme --check --workspace --all-features

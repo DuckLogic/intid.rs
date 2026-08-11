@@ -4,7 +4,6 @@ description = "Types to allocate and free integer ids"
 version.workspace = true
 repository.workspace = true
 authors.workspace = true
-readme.workspace = true
 license.workspace = true
 rust-version.workspace = true
 edition.workspace = true
