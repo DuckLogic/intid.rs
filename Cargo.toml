@@ -8,9 +8,10 @@ license = "MIT OR Apache-2.0"
 # 1.64 - workspace.package
 # 1.65 - GAT
 # 1.68 - sparse index
+# 1.71 - syn@3
 #
 # if changed, keep in sync with CI
-rust-version = "1.65"
+rust-version = "1.71"
 edition = "2021"
 
 [workspace]

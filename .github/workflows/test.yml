@@ -31,7 +31,7 @@ jobs:
           # you need to remove this from the main list and manually add the desired
           # feature/version combinations to 'include'
           # This hack is not currently needed because serde-erased v0.3 supports our MSRV.
-          - 1.65
+          - 1.71
 
           # Intermediate Releases (between MSRV and latest stable)
           # Be careful not to add these needlessly; they hold up CI
