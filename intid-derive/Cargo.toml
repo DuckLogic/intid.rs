@@ -14,7 +14,7 @@ keywords = ["enum", "derive", "intid", "idmap", "table"]
 proc-macro = true
 
 [dependencies]
-syn = "2"
+syn = "3"
 quote = "1"
 proc-macro2 = "1"
 expander = { version = "2.2", optional = true }
