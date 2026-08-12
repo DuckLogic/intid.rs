@@ -143,6 +143,7 @@ jobs:
       - uses: taiki-e/cache-cargo-install-action@v3  # not supported by regular install action
         with:
           tool: cargo-reedme
+          locked: false
       - name: Run cargo-reedme
         run: |
           cargo reedme --check --workspace --all-features
