@@ -331,7 +331,8 @@ pub fn determine_repr(input: &DeriveInput) -> Result<Option<Repr>, syn::Error> {
                 if result.is_some() {
                     return Err(meta.error("Encountered multiple repr(...) attributes"));
                 }
-                let ident = meta.path.require_ident()?;
+                let unknown_repr = || syn::Error::new(meta.path.span(), "Unknown #[repr])");
+                let ident = meta.path.get_ident().ok_or_else(unknown_repr)?;
                 let s = ident.to_string();
                 result = Some(match &*s {
                     "C" => Repr::C(ident.span()),
@@ -343,7 +344,7 @@ pub fn determine_repr(input: &DeriveInput) -> Result<Option<Repr>, syn::Error> {
                             ..int
                         })
                     }
-                    _ => return Err(syn::Error::new(meta.path.span(), "Unknown #[repr])")),
+                    _ => return Err(unknown_repr()),
                 });
                 Ok(())
             })?;
