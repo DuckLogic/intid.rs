@@ -92,10 +92,13 @@ jobs:
           - stable
           - nightly
         feature_flags:
-          - "--feature-powerset --exclude-features nightly"
+          - "--no-default-features"
+          - "--feature-powerset --depth=4 --exclude-features nightly"
         include:
           - rust: nightly
-            feature_flags: "--feature-powerset --features nightly --ignore-unknown-features"
+            feature_flags: "--feature-powerset --depth=4 --features nightly --ignore-unknown-features"
+          - rust: nightly
+            feature_flags: "--all-features"
 
     steps:
       - uses: actions/checkout@v5
