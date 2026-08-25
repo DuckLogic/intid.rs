@@ -30,6 +30,10 @@ bytemuck = ["dep:bytemuck", "primint/bytemuck"]
 # Take advantage of nightly features,
 # and implement traits for nightly types
 nightly = []
+# Implement IntegerId for primint::num::NonZero
+primint-nonzero = ["primint/nonzero"]
+# Implement IntegerId for primint::num::NonMax
+primint-nonmax = ["primint/nonmax"]
 
 [lints]
 workspace = true

@@ -1,4 +1,4 @@
-ALL_STABLE_FEATURES := "idmap/serde,idmap/petgraph_0_8,intid/num-traits,intid/nonmax,intid/bytemuck"
+ALL_STABLE_FEATURES := "idmap/serde,idmap/petgraph_0_8,intid/num-traits,intid/nonmax,intid/bytemuck,intid/primint-nonzero,intid/primint-nonmax"
 
 check: && check-format
     cargo +nightly clippy --all-targets --all-features

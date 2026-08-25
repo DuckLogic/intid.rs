@@ -27,6 +27,10 @@ num-traits = ["intid-core/num-traits"]
 nonmax = ["intid-core/nonmax"]
 # integration with bytemuck
 bytemuck = ["intid-core/bytemuck"]
+# Implement IntegerId for primint::num::NonZero
+primint-nonzero = ["intid-core/primint-nonzero"]
+# Implement IntegerId for primint::num::NonMax
+primint-nonmax = ["intid-core/primint-nonmax"]
 
 [lints]
 workspace = true

@@ -31,7 +31,7 @@ intid-derive = { path  = "intid-derive", version = "0.3.6" }
 intid-core = { path = "intid-core", version = "0.3.6"}
 intid = { path  = "intid", version = "0.3.6" }
 idmap = { path  = "idmap", version = "0.3.6" }
-primint = "0.1.0"
+primint = { version = "0.1.4", default-features = false }
 
 [workspace.lints.rust]
 missing_docs = "deny"
