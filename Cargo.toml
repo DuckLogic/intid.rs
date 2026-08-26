@@ -1,6 +1,6 @@
 [workspace.package]
 # 0.3.6 - switch to primint
-version = "0.3.6"
+version = "0.3.7"
 repository = "https://github.com/DuckLogic/intid.rs"
 authors = ["Techcable <git@techcable.net>"]
 license = "MIT OR Apache-2.0"
