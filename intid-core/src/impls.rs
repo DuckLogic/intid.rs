@@ -216,5 +216,3 @@ macro_rules! impl_uninhabited {
     };
 }
 impl_uninhabited!(core::convert::Infallible);
-#[cfg(feature = "nightly")]
-impl_uninhabited!(!);

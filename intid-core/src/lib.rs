@@ -18,7 +18,6 @@
 //! [`intid`]: https://docs.rs/intid/latest/intid
 //! [`intid_derive`]: https://docs.rs/intid-derive/latest/intid_derive
 #![no_std]
-#![cfg_attr(feature = "nightly", feature(never_type,))]
 extern crate alloc;
 
 /// The `primint` crate used to abstract over primitive integer types.
