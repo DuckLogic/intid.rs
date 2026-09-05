@@ -111,7 +111,7 @@ macro_rules! do_nonmax_impl {
     (@main_body $target:path, $int:ident) => {
         type Int = $int;
         const MIN_ID: Option<Self> = Some({
-            assert!(primint::is_signed::<$int>());
+            assert!(primint::is_unsigned::<$int>());
             // SAFETY: Zero is never the maximum value
             unsafe { <$target>::new_unchecked(primint::zero()) }
         });
