@@ -41,6 +41,8 @@ itertools = "0.14"
 intid-derive.workspace = true
 quickcheck = "1"
 thiserror = "2"
+intid = { path = "../intid-core", package = "intid-core", features = ["primint-nonmax"] }
+primint = { workspace = true, features = ["nonmax"] }
 
 [package.metadata.docs.rs]
 all-features = true
